@@ -29,6 +29,8 @@
 
 -include("tjota_reg.hrl").
 
+-define(KEYSPACE, "tjota").
+
 -define(TABLE_USER, "user").
 -define(TABLE_ROOM, "room").
 -define(TABLE_MESSAGE, "message").
@@ -37,6 +39,7 @@
 -define(TABLE_ROOM_USER, "room_user").
 
 bootstrap() ->
+    create_keyspace(),
     create_table([
         user,
         room,
@@ -47,10 +50,33 @@ bootstrap() ->
         room_user
     ]).
 
+get_cqerl_client() -> cqerl:get_client({}).
+
+create_keyspace() ->
+    {ok, Client} = get_cqerl_client(),
+    {ok, _} = cqerl:run_query(Client, io_lib:format("
+        CREATE KEYSPACE IF NOT EXISTS ~s
+        WITH replication = {
+            'class': 'SimpleStrategy',
+            'replication_factor': 1
+        }
+    ", [?KEYSPACE])).
+
 create_table([]) -> ok;
 create_table([H|T]) -> create_table(H), create_table(T);
 
-create_table(user) -> not_implemented;
+create_table(user) ->
+    {ok, Client} = get_cqerl_client(),
+    {ok, _} = cqerl:run_query(Client, io_lib:format("
+        CREATE TABLE IF NOT EXISTS ~s.~s (
+            alias TEXT,
+            name TEXT,
+            password TEXT,
+            id UUID,
+            PRIMARY KEY (alias)
+        )
+    ", [?KEYSPACE, ?TABLE_USER]));
+
 create_table(room) -> not_implemented;
 create_table(message) -> not_implemented;
 
