@@ -5,5 +5,5 @@
     stop/1
 ]).
 
-start(_StartType, _StartArgs) -> tjota_sup:start_link().
+start(_StartType, _StartArgs) -> tjota_db:bootstrap(), tjota_sup:start_link().
 stop(_State) -> ok.
