@@ -9,6 +9,11 @@
     select_user/1
 ]).
 -export([
+    insert_session/1,
+    delete_session/1,
+    select_session/1
+]).
+-export([
     insert_room/1,
     update_room/1,
     delete_room/1,
@@ -43,6 +48,7 @@ bootstrap() ->
     create_keyspace(),
     create_table([
         user,
+        session,
         room,
         message
     ]),
@@ -78,6 +84,7 @@ create_table(user) ->
         )
     ", [?KEYSPACE, ?TABLE_USER]));
 
+create_table(session) -> not_implemented;
 create_table(room) -> not_implemented;
 create_table(message) -> not_implemented;
 
@@ -88,6 +95,10 @@ insert_user(#t_user{} = User) -> not_implemented.
 update_user(#t_user{} = User) -> not_implemented.
 delete_user(#t_user{} = User) -> not_implemented.
 select_user(#t_user{} = User) -> not_implemented.
+
+insert_session(#t_session{} = Session) -> not_implemented.
+delete_session(#t_session{} = Session) -> not_implemented.
+select_session(#t_session{} = Session) -> not_implemented.
 
 insert_room(#t_room{} = Room) -> not_implemented.
 update_room(#t_room{} = Room) -> not_implemented.

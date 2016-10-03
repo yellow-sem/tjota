@@ -8,6 +8,11 @@
     id::?ID
 }).
 
+-record(t_session, {
+    token::string(),
+    user_id::?ID
+}).
+
 -record(t_room, {
     id::?ID,
     name::string(),
