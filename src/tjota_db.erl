@@ -20,6 +20,7 @@
 ]).
 -export([
     sym_insert_user_room/2,
+    sym_update_user_room/3,
     sym_delete_user_room/2
 ]).
 -export([
@@ -100,14 +101,20 @@ sym_insert_user_room(#t_user{} = User, #t_room{} = Room) ->
     insert_user_room(User, Room),
     insert_room_user(Room, User).
 
+sym_update_user_room(#t_user{} = User, #t_room{} = Room, Active) ->
+    update_user_room(User, Room, Active),
+    update_room_user(Room, User, Active).
+
 sym_delete_user_room(#t_user{} = User, #t_room{} = Room) ->
     delete_user_room(User, Room),
     delete_room_user(Room, User).
 
 insert_user_room(#t_user{} = User, #t_room{} = Room) -> not_implemented.
+update_user_room(#t_user{} = User, #t_room{} = Room, Active) -> not_implemented.
 delete_user_room(#t_user{} = User, #t_room{} = Room) -> not_implemented.
 select_user_room(#t_user{} = User) -> not_implemented.
 
 insert_room_user(#t_room{} = Room, #t_user{} = User) -> not_implemented.
+update_room_user(#t_room{} = Room, #t_user{} = User, Active) -> not_implemented.
 delete_room_user(#t_room{} = Room, #t_user{} = User) -> not_implemented.
 select_room_user(#t_user{} = User) -> not_implemented.
