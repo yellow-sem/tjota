@@ -14,4 +14,4 @@ erl_crash.dump
 logs
 _build
 .idea
-.lock
+*.lock
