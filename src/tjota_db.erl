@@ -91,41 +91,62 @@ create_table(message) -> not_implemented;
 create_table(user_room) -> not_implemented;
 create_table(room_user) -> not_implemented.
 
+
+% `user` table
+
 insert_user(#t_user{} = User) -> not_implemented.
 update_user(#t_user{} = User) -> not_implemented.
 delete_user(#t_user{} = User) -> not_implemented.
 select_user(#t_user{} = User) -> not_implemented.
 
+
+% `session` table
+
 insert_session(#t_session{} = Session) -> not_implemented.
 delete_session(#t_session{} = Session) -> not_implemented.
 select_session(#t_session{} = Session) -> not_implemented.
+
+
+% `room` table
 
 insert_room(#t_room{} = Room) -> not_implemented.
 update_room(#t_room{} = Room) -> not_implemented.
 delete_room(#t_room{} = Room) -> not_implemented.
 select_room(#t_room{} = Room) -> not_implemented.
 
+
+% `message` table
+
 insert_message(#t_message{} = Message) -> not_implemented.
 select_message(#t_message{} = Message) -> not_implemented.
 
+
+% `user_room` `room_user` symmetric shortcuts
+
 sym_insert_user_room(#t_user{} = User, #t_room{} = Room) ->
-    insert_user_room(User, Room),
-    insert_room_user(Room, User).
+    {ok, _} = insert_user_room(User, Room),
+    {ok, _} = insert_room_user(Room, User).
 
 sym_update_user_room(#t_user{} = User, #t_room{} = Room, Active) ->
-    update_user_room(User, Room, Active),
-    update_room_user(Room, User, Active).
+    {ok, _} = update_user_room(User, Room, Active),
+    {ok, _} = update_room_user(Room, User, Active).
 
 sym_delete_user_room(#t_user{} = User, #t_room{} = Room) ->
-    delete_user_room(User, Room),
-    delete_room_user(Room, User).
+    {ok, _} = delete_user_room(User, Room),
+    {ok, _} = delete_room_user(Room, User).
+
+
+% `user_room` table
 
 insert_user_room(#t_user{} = User, #t_room{} = Room) -> not_implemented.
 update_user_room(#t_user{} = User, #t_room{} = Room, Active) -> not_implemented.
 delete_user_room(#t_user{} = User, #t_room{} = Room) -> not_implemented.
 select_user_room(#t_user{} = User) -> not_implemented.
 
+
+% `room_user` table
+
 insert_room_user(#t_room{} = Room, #t_user{} = User) -> not_implemented.
 update_room_user(#t_room{} = Room, #t_user{} = User, Active) -> not_implemented.
 delete_room_user(#t_room{} = Room, #t_user{} = User) -> not_implemented.
-select_room_user(#t_user{} = User) -> not_implemented.
+select_room_user(#t_room{} = Room) -> not_implemented.
