@@ -9,6 +9,12 @@
     select_user/1
 ]).
 -export([
+    insert_alias/1,
+    update_alias/1,
+    delete_alias/1,
+    select_alias/1
+]).
+-export([
     insert_session/1,
     delete_session/1,
     select_session/1
@@ -38,6 +44,8 @@
 -define(KEYSPACE, "tjota").
 
 -define(TABLE_USER, "user").
+-define(TABLE_ALIAS, "alias").
+-define(TABLE_SESSION, "session").
 -define(TABLE_ROOM, "room").
 -define(TABLE_MESSAGE, "message").
 
@@ -48,6 +56,7 @@ bootstrap() ->
     create_keyspace(),
     create_table([
         user,
+        alias,
         session,
         room,
         message
@@ -76,20 +85,78 @@ create_table(user) ->
     {ok, Client} = get_cqerl_client(),
     {ok, _} = cqerl:run_query(Client, io_lib:format("
         CREATE TABLE IF NOT EXISTS ~s.~s (
+            id UUID,
             alias TEXT,
             name TEXT,
             password TEXT,
-            id UUID,
-            PRIMARY KEY (alias)
+            PRIMARY KEY (id)
         )
     ", [?KEYSPACE, ?TABLE_USER]));
 
-create_table(session) -> not_implemented;
-create_table(room) -> not_implemented;
-create_table(message) -> not_implemented;
+create_table(alias) ->
+    {ok, Client} = get_cqerl_client(),
+    {ok, _} = cqerl:run_query(Client, io_lib:format("
+        CREATE TABLE IF NOT EXISTS ~s.~s (
+            alias TEXT,
+            user_id UUID,
+            PRIMARY KEY (alias)
+        )
+    ", [?KEYSPACE, ?TABLE_ALIAS]));
 
-create_table(user_room) -> not_implemented;
-create_table(room_user) -> not_implemented.
+create_table(session) ->
+    {ok, Client} = get_cqerl_client(),
+    {ok, _} = cqerl:run_query(Client, io_lib:format("
+        CREATE TABLE IF NOT EXISTS ~s.~s (
+            id UUID,
+            user_id UUID,
+            PRIMARY KEY (id)
+        )
+    ", [?KEYSPACE, ?TABLE_SESSION]));
+
+create_table(room) ->
+    {ok, Client} = get_cqerl_client(),
+    {ok, _} = cqerl:run_query(Client, io_lib:format("
+        CREATE TABLE IF NOT EXISTS ~s.~s (
+            id UUID,
+            name TEXT,
+            type TEXT,
+            data TEXT,
+            PRIMARY KEY (id)
+        )
+    ", [?KEYSPACE, ?TABLE_ROOM]));
+
+create_table(message) ->
+    {ok, Client} = get_cqerl_client(),
+    {ok, _} = cqerl:run_query(Client, io_lib:format("
+        CREATE TABLE IF NOT EXISTS ~s.~s (
+            room_id UUID,
+            timestamp TIMESTAMP,
+            id UUID,
+            user_id UUID,
+            data TEXT,
+            PRIMARY KEY (room_id, timestamp, id)
+        )
+    ", [?KEYSPACE, ?TABLE_MESSAGE]));
+
+create_table(user_room) ->
+    {ok, Client} = get_cqerl_client(),
+    {ok, _} = cqerl:run_query(Client, io_lib:format("
+        CREATE TABLE IF NOT EXISTS ~s.~s (
+            user_id UUID,
+            room_id UUID,
+            PRIMARY KEY (user_id, room_id)
+        )
+    ", [?KEYSPACE, ?TABLE_USER_ROOM]));
+
+create_table(room_user) ->
+    {ok, Client} = get_cqerl_client(),
+    {ok, _} = cqerl:run_query(Client, io_lib:format("
+        CREATE TABLE IF NOT EXISTS ~s.~s (
+            room_id UUID,
+            user_id UUID,
+            PRIMARY KEY (room_id, user_id)
+        )
+    ", [?KEYSPACE, ?TABLE_ROOM_USER])).
 
 
 % `user` table
@@ -98,6 +165,14 @@ insert_user(#t_user{} = User) -> not_implemented.
 update_user(#t_user{} = User) -> not_implemented.
 delete_user(#t_user{} = User) -> not_implemented.
 select_user(#t_user{} = User) -> not_implemented.
+
+
+% `alias` table
+
+insert_alias(#t_alias{} = Alias) -> not_implemented.
+update_alias(#t_alias{} = Alias) -> not_implemented.
+delete_alias(#t_alias{} = Alias) -> not_implemented.
+select_alias(#t_alias{} = Alias) -> not_implemented.
 
 
 % `session` table
