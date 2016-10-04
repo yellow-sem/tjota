@@ -15,13 +15,11 @@
 ]).
 -export([
     insert_session/1,
-    delete_session/1,
     select_session/1
 ]).
 -export([
     insert_room/1,
     update_room/1,
-    delete_room/1,
     select_room/1
 ]).
 -export([
@@ -29,13 +27,13 @@
     select_message/1
 ]).
 -export([
+    select_user_room/1,
+    select_room_user/1
+]).
+-export([
     sym_insert_user_room/3,
     sym_update_user_room/3,
     sym_delete_user_room/2
-]).
--export([
-    select_user_room/1,
-    select_room_user/1
 ]).
 
 -include("tjota_reg.hrl").
@@ -119,6 +117,7 @@ create_table(room) ->
     {ok, _} = cqerl:run_query(Client, io_lib:format("
         CREATE TABLE IF NOT EXISTS ~s.~s (
             id UUID,
+            user_id UUID,
             name TEXT,
             type TEXT,
             data TEXT,
@@ -145,6 +144,7 @@ create_table(user_room) ->
         CREATE TABLE IF NOT EXISTS ~s.~s (
             user_id UUID,
             room_id UUID,
+            active BOOLEAN,
             PRIMARY KEY (user_id, room_id)
         )
     ", [?KEYSPACE, ?TABLE_USER_ROOM]));
@@ -155,12 +155,14 @@ create_table(room_user) ->
         CREATE TABLE IF NOT EXISTS ~s.~s (
             room_id UUID,
             user_id UUID,
+            active BOOLEAN,
             PRIMARY KEY (room_id, user_id)
         )
     ", [?KEYSPACE, ?TABLE_ROOM_USER])).
 
-
-% `alias` table
+%%%%%%%%%
+% alias %
+%%%%%%%%%
 
 insert_alias(#t_alias{} = Alias) ->
     {ok, Client} = get_cqerl_client(),
@@ -180,8 +182,9 @@ update_alias(#t_alias{} = Alias) -> insert_alias(Alias).
 
 select_alias(#t_alias{} = Alias) -> not_implemented.
 
-
-% `user` table
+%%%%%%%%
+% user %
+%%%%%%%%
 
 insert_user(#t_user{} = User) ->
     {ok, Client} = get_cqerl_client(),
@@ -209,29 +212,126 @@ delete_user(#t_user{} = User) -> update_user(User#t_user{active = false}).
 
 select_user(#t_user{} = User) -> not_implemented.
 
+%%%%%%%%%%%
+% session %
+%%%%%%%%%%%
 
-% `session` table
+insert_session(#t_session{} = Session) ->
+    {ok, Client} = get_cqerl_client(),
+    {ok, _} = cqerl:run_query(Client, #cql_query{
+        statement = io_lib:format("
+            INSERT INTO ~s.~s (id, user_id)
+            VALUES (?, ?)
+        ", [?KEYSPACE, ?TABLE_SESSION]),
+        values = [
+            {id, Session#t_session.id},
+            {user_id, Session#t_session.user_id}
+        ]
+    }).
 
-insert_session(#t_session{} = Session) -> not_implemented.
-delete_session(#t_session{} = Session) -> not_implemented.
 select_session(#t_session{} = Session) -> not_implemented.
 
+%%%%%%%%
+% room %
+%%%%%%%%
 
-% `room` table
+insert_room(#t_room{} = Room) ->
+    {ok, Client} = get_cqerl_client(),
+    {ok, _} = cqerl:run_query(Client, #cql_query{
+        statement = io_lib:format("
+            INSERT INTO ~s.~s (id, user_id, name, type, data)
+            VALUES (?, ?, ?, ?, ?)
+        ", [?KEYSPACE, ?TABLE_ROOM]),
+        values = [
+            {id, Room#t_room.id},
+            {user_id, Room#t_room.user_id},
+            {name, Room#t_room.name},
+            {type, Room#t_room.type},
+            {data, Room#t_room.data}
+        ]
+    }).
 
-insert_room(#t_room{} = Room) -> not_implemented.
 update_room(#t_room{} = Room) -> insert_room(Room).
-delete_room(#t_room{} = Room) -> not_implemented.
+
 select_room(#t_room{} = Room) -> not_implemented.
 
+%%%%%%%%%%%
+% message %
+%%%%%%%%%%%
 
-% `message` table
+insert_message(#t_message{} = Message) ->
+    {ok, Client} = get_cqerl_client(),
+    {ok, _} = cqerl:run_query(Client, #cql_query{
+        statement = io_lib:format("
+            INSERT INTO ~s.~s (room_id, timestamp, id, user_id, data)
+            VALUES (?, ?, ?, ?, ?)
+        ", [?KEYSPACE, ?TABLE_ROOM]),
+        values = [
+            {room_id, Message#t_message.room_id},
+            {timestamp, Message#t_message.timestamp},
+            {id, Message#t_message.id},
+            {user_id, Message#t_message.user_id},
+            {data, Message#t_message.data}
+        ]
+    }).
 
-insert_message(#t_message{} = Message) -> not_implemented.
 select_message(#t_message{} = Message) -> not_implemented.
 
+%%%%%%%%%%%%%
+% user_room %
+%%%%%%%%%%%%%
 
-% `user_room` `room_user` symmetric shortcuts
+insert_user_room(#t_user{} = User, #t_room{} = Room, Active) ->
+    {ok, Client} = get_cqerl_client(),
+    {ok, _} = cqerl:run_query(Client, #cql_query{
+        statement = io_lib:format("
+            INSERT INTO ~s.~s (user_id, room_id, active)
+            VALUES (?, ?, ?)
+        ", [?KEYSPACE, ?TABLE_USER_ROOM]),
+        values = [
+            {user_id, User#t_user.id},
+            {room_id, Room#t_room.id},
+            Active
+        ]
+    }).
+
+update_user_room(#t_user{} = User, #t_room{} = Room, Active) ->
+    insert_user_room(User, Room, Active).
+
+delete_user_room(#t_user{} = User, #t_room{} = Room) ->
+    update_user_room(User, Room, false).
+
+select_user_room(#t_user{} = User) -> not_implemented.
+
+%%%%%%%%%%%%%
+% room_user %
+%%%%%%%%%%%%%
+
+insert_room_user(#t_room{} = Room, #t_user{} = User, Active) ->
+    {ok, Client} = get_cqerl_client(),
+    {ok, _} = cqerl:run_query(Client, #cql_query{
+        statement = io_lib:format("
+            INSERT INTO ~s.~s (room_id, user_id, active)
+            VALUES (?, ?, ?)
+        ", [?KEYSPACE, ?TABLE_ROOM_USER]),
+        values = [
+            {room_id, Room#t_room.id},
+            {user_id, User#t_user.id},
+            Active
+        ]
+    }).
+
+update_room_user(#t_room{} = Room, #t_user{} = User, Active) ->
+    insert_room_user(Room, User, Active).
+
+delete_room_user(#t_room{} = Room, #t_user{} = User) ->
+    update_room_user(Room, User, false).
+
+select_room_user(#t_room{} = Room) -> not_implemented.
+
+%%%%%%%%%%%%%
+% shortcuts %
+%%%%%%%%%%%%%
 
 sym_insert_user_room(#t_user{} = User, #t_room{} = Room, Active) ->
     {ok, _} = insert_user_room(User, Room, Active),
@@ -244,29 +344,3 @@ sym_update_user_room(#t_user{} = User, #t_room{} = Room, Active) ->
 sym_delete_user_room(#t_user{} = User, #t_room{} = Room) ->
     {ok, _} = delete_user_room(User, Room),
     {ok, _} = delete_room_user(Room, User).
-
-
-% `user_room` table
-
-insert_user_room(#t_user{} = User, #t_room{} = Room, Active) ->
-    not_implemented.
-
-update_user_room(#t_user{} = User, #t_room{} = Room, Active) ->
-    insert_user_room(User, Room, Active).
-
-delete_user_room(#t_user{} = User, #t_room{} = Room) -> not_implemented.
-
-select_user_room(#t_user{} = User) -> not_implemented.
-
-
-% `room_user` table
-
-insert_room_user(#t_room{} = Room, #t_user{} = User, Active) ->
-    not_implemented.
-
-update_room_user(#t_room{} = Room, #t_user{} = User, Active) ->
-    insert_room_user(Room, User, Active).
-
-delete_room_user(#t_room{} = Room, #t_user{} = User) -> not_implemented.
-
-select_room_user(#t_room{} = Room) -> not_implemented.
