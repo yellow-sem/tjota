@@ -38,6 +38,7 @@
 -define(KEYSPACE, "tjota").
 
 -define(TABLE_USER, "user").
+-define(TABLE_SESSION, "session").
 -define(TABLE_ROOM, "room").
 -define(TABLE_MESSAGE, "message").
 
@@ -84,14 +85,63 @@ create_table(user) ->
         )
     ", [?KEYSPACE, ?TABLE_USER]));
 
-create_table(session) -> not_implemented;
-create_table(room) -> not_implemented;
-create_table(message) -> not_implemented;
+create_table(session) -> 
+    {ok, Client} = get_cqerl_client(),
+    {ok, _} = cqerl:run_query(Client, io_lib:format("
+        CREATE TABLE IF NOT EXISTS ~s.~s (
+        )
+    ", [?KEYSPACE, ?TABLE_SESSION]));
 
-create_table(user_room) -> not_implemented;
-create_table(room_user) -> not_implemented.
+
+create_table(room) -> 
+    {ok, Client} = get_cqerl_client(),
+    {ok, _} = cqerl:run_query(Client, io_lib:format("
+        CREATE TABLE IF NOT EXISTS ~s.~s (
+            room-name TEXT,
+            id UUID,
+            users TEXT,
+            type TEXT,
+            data BLOB,
+            PRIMARY KEY (id)
+        )
+    ", [?KEYSPACE, ?TABLE_ROOM]));
 
 
+create_table(message) ->
+  {ok, Client} = get_cqerl_client(),
+    {ok, _} = cqerl:run_query(Client, io_lib:format("
+        CREATE TABLE IF NOT EXISTS ~s.~s (
+            data TEXT,
+            room_id UUID,
+            sender_id UUID,
+            timestamp TIMESTAMP,
+            PRIMARY KEY (data)
+        )
+    ", [?KEYSPACE, ?TABLE_MESSAGE]));
+
+
+create_table(user_room) ->
+  {ok, Client} = get_cqerl_client(),
+    {ok, _} = cqerl:run_query(Client, io_lib:format("
+        CREATE TABLE IF NOT EXISTS ~s.~s (
+        user_id UUID,
+        room_id UUID,
+        active BOOLEAN,
+        PIRMARY KEY(room_id)
+        )
+    ", [?KEYSPACE, ?TABLE_USER_ROOM]));
+
+
+create_table(room_user) ->
+   {ok, Client} = get_cqerl_client(),
+    {ok, _} = cqerl:run_query(Client, io_lib:format("
+        CREATE TABLE IF NOT EXISTS ~s.~s (
+        room_id UUID,
+        user_id UUID,
+        PRIMARY KEY(user_id)
+        )
+    ", [?KEYSPACE, ?TABLE_ROOM_USER])).
+ 
 % `user` table
 
 insert_user(#t_user{} = User) -> not_implemented.
