@@ -1,16 +1,17 @@
 
 -define(ID, string()).
 
+-record(t_alias, {
+    alias::string(),
+    user_id::?ID
+}).
+
 -record(t_user, {
     id::?ID,
     alias::string(),
     name::string(),
-    password::string()
-}).
-
--record(t_alias, {
-    alias::string(),
-    user_id::?ID
+    password::string(),
+    active::boolean()
 }).
 
 -record(t_session, {
