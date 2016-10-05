@@ -16,7 +16,7 @@
 
 start(_StartType, _StartArgs) ->
     Dispatch = cowboy_router:compile([
-                                      {'_', [{"/", hello_handler, []}]}
+                                      {'_', [{"/chat", chat_handler, []}]}
                                      ]),
     {ok, _} = cowboy:start_clear(my_http_listener, 
                                  100,
