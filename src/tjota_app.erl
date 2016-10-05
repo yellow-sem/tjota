@@ -17,7 +17,8 @@ start(_StartType, _StartArgs) ->
         active = true
     },
     tjota_db:insert_user(User),
-    tjota_db:delete_user(User),
+    Data = tjota_db:select_user([#t_user{id = "7734df5b-3441-415f-9928-fc2217376577"}]),
+    io:format("~p~n", [Data]),
     tjota_sup:start_link().
 
 stop(_State) -> ok.

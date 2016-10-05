@@ -10,7 +10,6 @@
 -export([
     insert_user/1,
     update_user/1,
-    delete_user/1,
     select_user/1
 ]).
 -export([
@@ -32,8 +31,7 @@
 ]).
 -export([
     sym_insert_user_room/3,
-    sym_update_user_room/3,
-    sym_delete_user_room/2
+    sym_update_user_room/3
 ]).
 
 -include("tjota_reg.hrl").
@@ -135,7 +133,7 @@ create_table(message) ->
             user_id UUID,
             data TEXT,
             PRIMARY KEY (room_id, timestamp, id)
-        )
+        ) WITH CLUSTERING ORDER BY (timestamp ASC)
     ", [?KEYSPACE, ?TABLE_MESSAGE]));
 
 create_table(user_room) ->
@@ -180,7 +178,25 @@ insert_alias(#t_alias{} = Alias) ->
 
 update_alias(#t_alias{} = Alias) -> insert_alias(Alias).
 
-select_alias(#t_alias{} = Alias) -> not_implemented.
+select_alias(#t_alias{} = Alias) ->
+    {ok, Client} = get_cqerl_client(),
+    {ok, Result} = cqerl:run_query(Client, #cql_query{
+        statement = io_lib:format("
+            SELECT * FROM ~s.~s
+            WHERE alias = ?
+        ", [?KEYSPACE, ?TABLE_ALIAS]),
+        values = [
+            {alias, Alias#t_alias.alias}
+        ]
+    }),
+    lists:map(fun map_alias/1, cqerl:all_rows(Result)).
+
+map_alias(Row) ->
+    #t_alias{
+        alias = proplists:get_value(alias, Row),
+        user_id = proplists:get_value(user_id, Row)
+    }.
+
 
 %%%%%%%%
 % user %
@@ -188,10 +204,6 @@ select_alias(#t_alias{} = Alias) -> not_implemented.
 
 insert_user(#t_user{} = User) ->
     {ok, Client} = get_cqerl_client(),
-    {ok, _} = insert_alias(#t_alias{
-        alias = User#t_user.alias,
-        user_id = User#t_user.id
-    }),
     {ok, _} = cqerl:run_query(Client, #cql_query{
         statement = io_lib:format("
             INSERT INTO ~s.~s (id, alias, name, password, active)
@@ -208,9 +220,40 @@ insert_user(#t_user{} = User) ->
 
 update_user(#t_user{} = User) -> insert_user(User).
 
-delete_user(#t_user{} = User) -> update_user(User#t_user{active = false}).
+select_user(#t_user{} = User) ->
+    {ok, Client} = get_cqerl_client(),
+    {ok, Result} = cqerl:run_query(Client, #cql_query{
+        statement = io_lib:format("
+            SELECT * FROM ~s.~s
+            WHERE id = ?
+        ", [?KEYSPACE, ?TABLE_USER]),
+        values = [
+            {id, User#t_user.id}
+        ]
+    }),
+    lists:map(fun map_user/1, cqerl:all_rows(Result));
 
-select_user(#t_user{} = User) -> not_implemented.
+select_user(List) ->
+    {ok, Client} = get_cqerl_client(),
+    {ok, Result} = cqerl:run_query(Client, #cql_query{
+        statement = io_lib:format("
+            SELECT * FROM ~s.~s
+            WHERE id IN ?
+        ", [?KEYSPACE, ?TABLE_USER]),
+        values = [
+            {'in(id)', [User#t_user.id || User <- List]}
+        ]
+    }),
+    lists:map(fun map_user/1, cqerl:all_rows(Result)).
+
+map_user(Row) ->
+    #t_user{
+        id = proplists:get_value(id, Row),
+        alias = proplists:get_value(alias, Row),
+        name = proplists:get_value(name, Row),
+        password = proplists:get_value(password, Row),
+        active = proplists:get_value(active, Row)
+    }.
 
 %%%%%%%%%%%
 % session %
@@ -229,7 +272,24 @@ insert_session(#t_session{} = Session) ->
         ]
     }).
 
-select_session(#t_session{} = Session) -> not_implemented.
+select_session(#t_session{} = Session) ->
+    {ok, Client} = get_cqerl_client(),
+    {ok, Result} = cqerl:run_query(Client, #cql_query{
+        statement = io_lib:format("
+            SELECT * FROM ~s.~s
+            WHERE id = ?
+        ", [?KEYSPACE, ?TABLE_SESSION]),
+        values = [
+            {id, Session#t_session.id}
+        ]
+    }),
+    lists:map(fun map_session/1, cqerl:all_rows(Result)).
+
+map_session(Row) ->
+    #t_session{
+        id = proplists:get_value(id, Row),
+        user_id = proplists:get_value(user_id, Row)
+    }.
 
 %%%%%%%%
 % room %
@@ -253,7 +313,40 @@ insert_room(#t_room{} = Room) ->
 
 update_room(#t_room{} = Room) -> insert_room(Room).
 
-select_room(#t_room{} = Room) -> not_implemented.
+select_room(#t_room{} = Room) ->
+    {ok, Client} = get_cqerl_client(),
+    {ok, Result} = cqerl:run_query(Client, #cql_query{
+        statement = io_lib:format("
+            SELECT * FROM ~s.~s
+            WHERE id = ?
+        ", [?KEYSPACE, ?TABLE_ROOM]),
+        values = [
+            {id, Room#t_room.id}
+        ]
+    }),
+    lists:map(fun map_room/1, cqerl:all_rows(Result));
+
+select_room(List) ->
+    {ok, Client} = get_cqerl_client(),
+    {ok, Result} = cqerl:run_query(Client, #cql_query{
+        statement = io_lib:format("
+            SELECT * FROM ~s.~s
+            WHERE id IN ?
+        ", [?KEYSPACE, ?TABLE_ROOM]),
+        values = [
+            {'in(id)', [Room#t_room.id || Room <- List]}
+        ]
+    }),
+    lists:map(fun map_room/1, cqerl:all_rows(Result)).
+
+map_room(Row) ->
+    #t_room{
+        id = proplists:get_value(id, Row),
+        user_id = proplists:get_value(user_id, Row),
+        name = proplists:get_value(name, Row),
+        type = proplists:get_value(type, Row),
+        data = proplists:get_value(data, Row)
+    }.
 
 %%%%%%%%%%%
 % message %
@@ -275,7 +368,28 @@ insert_message(#t_message{} = Message) ->
         ]
     }).
 
-select_message(#t_message{} = Message) -> not_implemented.
+select_message(#t_message{} = Message) ->
+    {ok, Client} = get_cqerl_client(),
+    {ok, Result} = cqerl:run_query(Client, #cql_query{
+        statement = io_lib:format("
+            SELECT * FROM ~s.~s
+            WHERE room_id = ?
+            ORDER BY timestamp ASC
+        ", [?KEYSPACE, ?TABLE_MESSAGE]),
+        values = [
+            {room_id, Message#t_message.room_id}
+        ]
+    }),
+    lists:map(fun map_message/1, cqerl:all_rows(Result)).
+
+map_message(Row) ->
+    #t_message{
+        room_id = proplists:get_value(room_id, Row),
+        timestamp = proplists:get_value(timestamp, Row),
+        id = proplists:get_value(id, Row),
+        user_id = proplists:get_value(user_id, Row),
+        data = proplists:get_value(data, Row)
+    }.
 
 %%%%%%%%%%%%%
 % user_room %
@@ -298,10 +412,23 @@ insert_user_room(#t_user{} = User, #t_room{} = Room, Active) ->
 update_user_room(#t_user{} = User, #t_room{} = Room, Active) ->
     insert_user_room(User, Room, Active).
 
-delete_user_room(#t_user{} = User, #t_room{} = Room) ->
-    update_user_room(User, Room, false).
+select_user_room(#t_user{} = User) ->
+    {ok, Client} = get_cqerl_client(),
+    {ok, Result} = cqerl:run_query(Client, #cql_query{
+        statement = io_lib:format("
+            SELECT * FROM ~s.~s
+            WHERE user_id = ?
+        ", [?KEYSPACE, ?TABLE_USER_ROOM]),
+        values = [
+            {user_id, User#t_user.id}
+        ]
+    }),
+    lists:map(fun map_user_room/1, cqerl:all_rows(Result)).
 
-select_user_room(#t_user{} = User) -> not_implemented.
+map_user_room(Row) ->
+    #t_room{
+        id = proplists:get_value(room_id, Row)
+    }.
 
 %%%%%%%%%%%%%
 % room_user %
@@ -324,10 +451,23 @@ insert_room_user(#t_room{} = Room, #t_user{} = User, Active) ->
 update_room_user(#t_room{} = Room, #t_user{} = User, Active) ->
     insert_room_user(Room, User, Active).
 
-delete_room_user(#t_room{} = Room, #t_user{} = User) ->
-    update_room_user(Room, User, false).
+select_room_user(#t_room{} = Room) ->
+    {ok, Client} = get_cqerl_client(),
+    {ok, Result} = cqerl:run_query(Client, #cql_query{
+        statement = io_lib:format("
+            SELECT * FROM ~s.~s
+            WHERE room_id = ?
+        ", [?KEYSPACE, ?TABLE_ROOM_USER]),
+        values = [
+            {room_id, Room#t_user.id}
+        ]
+    }),
+    lists:map(fun map_room_user/1, cqerl:all_rows(Result)).
 
-select_room_user(#t_room{} = Room) -> not_implemented.
+map_room_user(Row) ->
+    #t_user{
+        id = proplists:get_value(user_id, Row)
+    }.
 
 %%%%%%%%%%%%%
 % shortcuts %
@@ -340,7 +480,3 @@ sym_insert_user_room(#t_user{} = User, #t_room{} = Room, Active) ->
 sym_update_user_room(#t_user{} = User, #t_room{} = Room, Active) ->
     {ok, _} = update_user_room(User, Room, Active),
     {ok, _} = update_room_user(Room, User, Active).
-
-sym_delete_user_room(#t_user{} = User, #t_room{} = Room) ->
-    {ok, _} = delete_user_room(User, Room),
-    {ok, _} = delete_room_user(Room, User).
