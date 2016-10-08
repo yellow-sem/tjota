@@ -107,6 +107,7 @@ create_table(session) ->
         CREATE TABLE IF NOT EXISTS ~s.~s (
             id UUID,
             user_id UUID,
+            data TEXT,
             PRIMARY KEY (id)
         )
     ", [?KEYSPACE, ?TABLE_SESSION]));
@@ -267,12 +268,13 @@ insert_session(#t_session{} = Session) ->
     {ok, Client} = get_cqerl_client(),
     {ok, _} = cqerl:run_query(Client, #cql_query{
         statement = io_lib:format("
-            INSERT INTO ~s.~s (id, user_id)
-            VALUES (?, ?)
+            INSERT INTO ~s.~s (id, user_id, data)
+            VALUES (?, ?, ?)
         ", [?KEYSPACE, ?TABLE_SESSION]),
         values = [
             {id, Session#t_session.id},
-            {user_id, Session#t_session.user_id}
+            {user_id, Session#t_session.user_id},
+            {data, Session#t_session.data}
         ]
     }).
 
@@ -292,7 +294,8 @@ select_session(#t_session{} = Session) ->
 map_session(Row) ->
     #t_session{
         id = proplists:get_value(id, Row),
-        user_id = proplists:get_value(user_id, Row)
+        user_id = proplists:get_value(user_id, Row),
+        data = proplists:get_value(data, Row)
     }.
 
 %%%%%%%%
