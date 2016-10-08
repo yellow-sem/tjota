@@ -2,15 +2,16 @@
 -define(ID, string()).
 
 -record(t_alias, {
+    provider::string(),
     alias::string(),
     user_id::?ID
 }).
 
 -record(t_user, {
     id::?ID,
+    provider::string(),
     alias::string(),
     name::string(),
-    password::string(),
     active::boolean()
 }).
 

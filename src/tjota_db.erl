@@ -82,9 +82,9 @@ create_table(user) ->
     {ok, _} = cqerl:run_query(Client, io_lib:format("
         CREATE TABLE IF NOT EXISTS ~s.~s (
             id UUID,
+            provider TEXT,
             alias TEXT,
             name TEXT,
-            password TEXT,
             active BOOLEAN,
             PRIMARY KEY (id)
         )
@@ -94,9 +94,10 @@ create_table(alias) ->
     {ok, Client} = get_cqerl_client(),
     {ok, _} = cqerl:run_query(Client, io_lib:format("
         CREATE TABLE IF NOT EXISTS ~s.~s (
+            provider TEXT,
             alias TEXT,
             user_id UUID,
-            PRIMARY KEY (alias)
+            PRIMARY KEY ((provider, alias))
         )
     ", [?KEYSPACE, ?TABLE_ALIAS]));
 
@@ -166,11 +167,12 @@ insert_alias(#t_alias{} = Alias) ->
     {ok, Client} = get_cqerl_client(),
     {ok, _} = cqerl:run_query(Client, #cql_query{
         statement = io_lib:format("
-            INSERT INTO ~s.~s (alias, user_id)
-            VALUES (?, ?)
+            INSERT INTO ~s.~s (provider, alias, user_id)
+            VALUES (?, ?, ?)
             IF NOT EXISTS
         ", [?KEYSPACE, ?TABLE_ALIAS]),
         values = [
+            {provider, Alias#t_alias.provider},
             {alias, Alias#t_alias.alias},
             {user_id, Alias#t_alias.user_id}
         ]
@@ -186,6 +188,7 @@ select_alias(#t_alias{} = Alias) ->
             WHERE alias = ?
         ", [?KEYSPACE, ?TABLE_ALIAS]),
         values = [
+            {provider, Alias#t_alias.provider},
             {alias, Alias#t_alias.alias}
         ]
     }),
@@ -193,6 +196,7 @@ select_alias(#t_alias{} = Alias) ->
 
 map_alias(Row) ->
     #t_alias{
+        provider = proplists:get_value(provider, Row),
         alias = proplists:get_value(alias, Row),
         user_id = proplists:get_value(user_id, Row)
     }.
@@ -206,14 +210,14 @@ insert_user(#t_user{} = User) ->
     {ok, Client} = get_cqerl_client(),
     {ok, _} = cqerl:run_query(Client, #cql_query{
         statement = io_lib:format("
-            INSERT INTO ~s.~s (id, alias, name, password, active)
+            INSERT INTO ~s.~s (id, provider, alias, name, active)
             VALUES (?, ?, ?, ?, ?)
         ", [?KEYSPACE, ?TABLE_USER]),
         values = [
             {id, User#t_user.id},
+            {provider, User#t_user.provider},
             {alias, User#t_user.alias},
             {name, User#t_user.name},
-            {password, User#t_user.password},
             {active, User#t_user.active}
         ]
     }).
@@ -249,9 +253,9 @@ select_user(List) ->
 map_user(Row) ->
     #t_user{
         id = proplists:get_value(id, Row),
+        provider = proplists:get_value(provider, Row),
         alias = proplists:get_value(alias, Row),
         name = proplists:get_value(name, Row),
-        password = proplists:get_value(password, Row),
         active = proplists:get_value(active, Row)
     }.
 
@@ -373,11 +377,12 @@ select_message(#t_message{} = Message) ->
     {ok, Result} = cqerl:run_query(Client, #cql_query{
         statement = io_lib:format("
             SELECT * FROM ~s.~s
-            WHERE room_id = ?
+            WHERE room_id = ? AND timestamp >= ?
             ORDER BY timestamp ASC
         ", [?KEYSPACE, ?TABLE_MESSAGE]),
         values = [
-            {room_id, Message#t_message.room_id}
+            {room_id, Message#t_message.room_id},
+            {timestamp, Message#t_message.timestamp}
         ]
     }),
     lists:map(fun map_message/1, cqerl:all_rows(Result)).
