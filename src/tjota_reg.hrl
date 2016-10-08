@@ -23,7 +23,6 @@
 
 -record(t_room, {
     id::?ID,
-    user_id::?ID,
     name::string(),
     type::group|private|bot,
     data::any()

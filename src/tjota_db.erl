@@ -117,7 +117,6 @@ create_table(room) ->
     {ok, _} = cqerl:run_query(Client, io_lib:format("
         CREATE TABLE IF NOT EXISTS ~s.~s (
             id UUID,
-            user_id UUID,
             name TEXT,
             type TEXT,
             data TEXT,
@@ -306,12 +305,11 @@ insert_room(#t_room{} = Room) ->
     {ok, Client} = get_cqerl_client(),
     {ok, _} = cqerl:run_query(Client, #cql_query{
         statement = io_lib:format("
-            INSERT INTO ~s.~s (id, user_id, name, type, data)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO ~s.~s (id, name, type, data)
+            VALUES (?, ?, ?, ?)
         ", [?KEYSPACE, ?TABLE_ROOM]),
         values = [
             {id, Room#t_room.id},
-            {user_id, Room#t_room.user_id},
             {name, Room#t_room.name},
             {type, Room#t_room.type},
             {data, Room#t_room.data}
@@ -349,7 +347,6 @@ select_room(List) ->
 map_room(Row) ->
     #t_room{
         id = proplists:get_value(id, Row),
-        user_id = proplists:get_value(user_id, Row),
         name = proplists:get_value(name, Row),
         type = proplists:get_value(type, Row),
         data = proplists:get_value(data, Row)
