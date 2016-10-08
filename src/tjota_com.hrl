@@ -1,4 +1,3 @@
-
 -define(ID, string()).
 
 -record(t_alias, {

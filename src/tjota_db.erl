@@ -34,7 +34,7 @@
     sym_update_user_room/3
 ]).
 
--include("tjota_reg.hrl").
+-include("tjota_com.hrl").
 -include("cqerl.hrl").
 
 -define(KEYSPACE, "tjota").

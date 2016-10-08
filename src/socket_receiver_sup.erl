@@ -1,4 +1,4 @@
--module(tjota_sup).
+-module(socket_receiver_sup).
 -behaviour(supervisor).
 -export([
     start_link/0
@@ -10,14 +10,14 @@
 start_link() -> supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 init([]) ->
-    Flags = {one_for_one, 0, 1},
+    Flags = {simple_one_for_one, 0, 1},
     Children = [
         {
-            socket_acceptor_sup,
-            {socket_acceptor_sup, start_link, []},
-            permanent,
+            socket_receiver,
+            {socket_receiver, start_link, []},
+            temporary,
             infinity,
-            supervisor,
+            worker,
             []
         }
     ],
