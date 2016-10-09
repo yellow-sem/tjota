@@ -1,8 +1,7 @@
 -module(db_auth).
 -export([
     login/1,
-    login/3,
-    logout/2
+    login/3
 ]).
 
 -include("db_com.hrl").
@@ -42,11 +41,9 @@ login(Provider, Username, Token) ->
     Session = #t_session{
         id = uuid:get_v4(),
         user_id = User#t_user.id,
-        data = Token
+        provider = Provider,
+        token = Token
     },
 
     db:insert_session(Session),
     {session, Session}.
-
-
-logout(_Provider, _Username) -> not_implemented.

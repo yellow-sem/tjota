@@ -6,6 +6,9 @@
 -include("socket_com.hrl").
 -include("db_com.hrl").
 
+-define(ERROR, "err").
+-define(SUCCESS, "ok").
+
 -define(C_SYS_EXIT, "sys:exit").
 
 -define(C_AUTH_LOGIN, "auth:login").
@@ -25,7 +28,7 @@ handle(#s_client{} = Client, ?C_SYS_EXIT, []) ->
 
 handle(#s_client{} = Client, ?C_AUTH_LOGIN, [Id]) ->
     case db_auth:login(#t_session{id = Id}) of
-        none -> {ok, Client, {send, self, "none"}};
+        none -> {ok, Client, {send, self, ?ERROR}};
         {session, Session} ->
             {
                 ok, Client#s_client{identity = Session#t_session.user_id},
@@ -44,11 +47,21 @@ handle(#s_client{} = Client, ?C_AUTH_LOGIN, [Credential, Password]) ->
                 {send, self, uuid:uuid_to_string(Session#t_session.id)}
             };
         false ->
-            {ok, Client, {send, self, "none"}}
+            {ok, Client, {send, self, ?ERROR}}
     end;
 
-handle(#s_client{} = Client, ?C_AUTH_LOGOUT, []) ->
-    {ok, Client, {send, self, "ok"}};
+handle(#s_client{} = Client, ?C_AUTH_LOGOUT, [Id]) ->
+    case db:select_session(#t_session{id = Id}) of
+        [Session] ->
+            provider:identity_logout(Session#t_session.provider,
+                                     Session#t_session.token),
+            db:delete_session(Session),
+
+            {ok, Client, {send, self, ?SUCCESS}};
+
+        [] ->
+            {ok, Client, {send, self, ?ERROR}}
+    end;
 
 handle(#s_client{} = Client, ?C_ROOM_LIST, []) ->
     {ok, Client, {send, self, "list"}};

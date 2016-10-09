@@ -14,6 +14,7 @@
 ]).
 -export([
     insert_session/1,
+    delete_session/1,
     select_session/1
 ]).
 -export([
@@ -107,7 +108,8 @@ create_table(session) ->
         CREATE TABLE IF NOT EXISTS ~s.~s (
             id UUID,
             user_id UUID,
-            data TEXT,
+            provider TEXT,
+            \"token\" TEXT,
             PRIMARY KEY (id)
         )
     ", [?KEYSPACE, ?TABLE_SESSION]));
@@ -267,13 +269,26 @@ insert_session(#t_session{} = Session) ->
     {ok, Client} = get_cqerl_client(),
     {ok, _} = cqerl:run_query(Client, #cql_query{
         statement = io_lib:format("
-            INSERT INTO ~s.~s (id, user_id, data)
-            VALUES (?, ?, ?)
+            INSERT INTO ~s.~s (id, user_id, provider, \"token\")
+            VALUES (?, ?, ?, ?)
         ", [?KEYSPACE, ?TABLE_SESSION]),
         values = [
             {id, Session#t_session.id},
             {user_id, Session#t_session.user_id},
-            {data, Session#t_session.data}
+            {provider, Session#t_session.provider},
+            {token, Session#t_session.token}
+        ]
+    }).
+
+delete_session(#t_session{} = Session) ->
+    {ok, Client} = get_cqerl_client(),
+    {ok, _} = cqerl:run_query(Client, #cql_query{
+        statement = io_lib:format("
+            DELETE FROM ~s.~s
+            WHERE id = ?
+        ", [?KEYSPACE, ?TABLE_SESSION]),
+        values = [
+            {id, Session#t_session.id}
         ]
     }).
 
@@ -294,7 +309,8 @@ map_session(Row) ->
     #t_session{
         id = proplists:get_value(id, Row),
         user_id = proplists:get_value(user_id, Row),
-        data = proplists:get_value(data, Row)
+        provider = proplists:get_value(provider, Row),
+        token = proplists:get_value(token, Row)
     }.
 
 %%%%%%%%

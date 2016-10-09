@@ -17,7 +17,8 @@
 -record(t_session, {
     id::?ID,
     user_id::?ID,
-    data::any()
+    provider::string(),
+    token::any()
 }).
 
 -record(t_room, {
