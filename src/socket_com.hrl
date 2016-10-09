@@ -21,5 +21,5 @@
     socket::port(),
     address=#s_address{},
     receiver::pid(),
-    user_id::any()
+    user::any()
 }).

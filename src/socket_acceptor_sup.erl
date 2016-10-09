@@ -13,6 +13,15 @@ init([]) ->
     Flags = {one_for_one, 0, 1},
     Children = [
         {
+            socket_receiver_event,
+            {socket_receiver_event, start_link, []},
+            permanent,
+            infinity,
+            worker,
+            []
+        },
+
+        {
             socket_acceptor,
             {socket_acceptor, start_link, []},
             permanent,

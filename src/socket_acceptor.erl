@@ -30,9 +30,11 @@ init(#s_server{} = Server) ->
 
     case gen_tcp:listen(Address#s_address.port, Options) of
         {ok, Socket} ->
+            socket_util:acceptor_start(Socket),
+
             {ok, #s_server{socket = Socket,
                            address = Address,
-                           acceptor = socket_util:acceptor_start(Socket)}};
+                           acceptor = self()}};
 
         {error, Reason} -> {stop, Reason}
     end.

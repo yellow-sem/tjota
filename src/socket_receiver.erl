@@ -31,34 +31,49 @@ handle_cast({socket, Socket}, #s_client{} = _Client) ->
     gen_tcp:send(Socket,
                  io_lib:format("start ~w ~n", [Host])),
 
+    socket_util:receiver_start(Socket),
+
     {noreply, #s_client{socket = Socket,
                         address = #s_address{host = Host, port = Port},
-                        receiver = socket_util:receiver_start(Socket)}}.
+                        receiver = self()}}.
 
 handle_info({receiver, {payload, Payload}}, #s_client{} = Client) ->
     Message = strip(binary_to_list(Payload)),
-    [Command, Id | Args] = string:tokens(Message, ?TOKEN_SEP),
+    Tokens = string:tokens(Message, ?TOKEN_SEP),
+    case Tokens of
+        [Command, Id | Args] -> ok;
+        [Command | Args] -> Id = any;
+        _ -> Command = none, Id = any, Args = []
+    end,
 
     {ok, NewClient, Result} = socket_handler:handle(Client, Command, Args),
+
+    if
+        Client =/= NewClient -> client_change(Client, NewClient);
+        true -> ok
+    end,
 
     case Result of
         stop -> {stop, normal, NewClient};
 
         none -> {noreply, NewClient};
 
-        {send, self, Response} ->
-            send(Client, Command, Id, Response),
+        {send, self, Content} ->
+            send(Client, Command, Id, Content),
             {noreply, NewClient};
 
-        {send, all, _Response} ->
+        {send, all, Content} ->
+            User = NewClient#s_client.user,
+            gen_event:notify(socket_receiver_event,
+                             {send, User, Command, Content}),
             {noreply, NewClient}
     end;
 
 handle_info({receiver, {error, Reason}}, #s_client{} = Client) ->
     {stop, Reason, Client};
 
-handle_info({response, {Command, Response}}, #s_client{} = Client) ->
-    send(Client, Command, any, Response),
+handle_info({content, {Command, Content}}, #s_client{} = Client) ->
+    send(Client, Command, any, Content),
     {noreply, Client}.
 
 terminate(_Reason, #s_client{} = Client) ->
@@ -66,9 +81,23 @@ terminate(_Reason, #s_client{} = Client) ->
 
 code_change(_OldVsn, #s_client{} = Client, _Extra) -> {ok, Client}.
 
-send(#s_client{} = Client, Command, Id, Response) ->
+client_change(#s_client{} = OldClient, #s_client{} = NewClient) ->
+
+    if OldClient#s_client.user =/= NewClient#s_client.user ->
+
+        gen_event:delete_handler(socket_receiver_event,
+                                 {socket_receiver_event, self()},
+                                 []),
+
+        gen_event:add_handler(socket_receiver_event,
+                              {socket_receiver_event, self()},
+                              NewClient)
+
+    end.
+
+send(#s_client{} = Client, Command, Id, Content) ->
     gen_tcp:send(Client#s_client.socket,
-                 io_lib:format("~s ~s ~s~n", [Command, Id, Response])).
+                 io_lib:format("~s ~s ~s~n", [Command, Id, Content])).
 
 strip(Content) ->
     re:replace(Content, "(^\\s+)|(\\s+$)", "", [global, {return, list}]).

@@ -22,9 +22,9 @@
 handle(#s_client{} = Client, ?C_SYS_EXIT, []) ->
     {ok, Client, stop};
 
-handle(#s_client{} = Client, ?C_AUTH_LOGIN, [Credentials]) ->
-    Response = io_lib:format("credentials ~s", [Credentials]),
-    {ok, Client, {send, self, Response}};
+handle(#s_client{} = Client, ?C_AUTH_LOGIN, [User]) ->
+    Content = io_lib:format("credentials ~s ok", [User]),
+    {ok, Client#s_client{user = User}, {send, self, Content}};
 
 handle(#s_client{} = Client, ?C_AUTH_LOGOUT, []) ->
     {ok, Client, {send, self, "ok"}};
@@ -44,7 +44,9 @@ handle(#s_client{} = Client, ?C_ROOM_INVITE, []) ->
 handle(#s_client{} = Client, ?C_MSG_RECV, []) ->
     {ok, Client, {send, self, "messages"}};
 
-handle(#s_client{} = Client, ?C_MSG_SEND, [_Message]) ->
+handle(#s_client{} = Client, ?C_MSG_SEND, [Message]) ->
+    gen_event:notify(socket_receiver_event,
+                     {send, "anotheruser", ?C_MSG_RECV, Message}),
     {ok, Client, {send, self, "ok"}};
 
 handle(#s_client{} = Client, _Command, _Args) ->
