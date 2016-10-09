@@ -83,7 +83,7 @@ create_table(user) ->
         CREATE TABLE IF NOT EXISTS ~s.~s (
             id UUID,
             provider TEXT,
-            alias TEXT,
+            username TEXT,
             name TEXT,
             active BOOLEAN,
             PRIMARY KEY (id)
@@ -95,9 +95,9 @@ create_table(alias) ->
     {ok, _} = cqerl:run_query(Client, io_lib:format("
         CREATE TABLE IF NOT EXISTS ~s.~s (
             provider TEXT,
-            alias TEXT,
+            username TEXT,
             user_id UUID,
-            PRIMARY KEY ((provider, alias))
+            PRIMARY KEY ((provider, username))
         )
     ", [?KEYSPACE, ?TABLE_ALIAS]));
 
@@ -167,13 +167,13 @@ insert_alias(#t_alias{} = Alias) ->
     {ok, Client} = get_cqerl_client(),
     {ok, _} = cqerl:run_query(Client, #cql_query{
         statement = io_lib:format("
-            INSERT INTO ~s.~s (provider, alias, user_id)
+            INSERT INTO ~s.~s (provider, username, user_id)
             VALUES (?, ?, ?)
             IF NOT EXISTS
         ", [?KEYSPACE, ?TABLE_ALIAS]),
         values = [
             {provider, Alias#t_alias.provider},
-            {alias, Alias#t_alias.alias},
+            {username, Alias#t_alias.username},
             {user_id, Alias#t_alias.user_id}
         ]
     }).
@@ -185,11 +185,11 @@ select_alias(#t_alias{} = Alias) ->
     {ok, Result} = cqerl:run_query(Client, #cql_query{
         statement = io_lib:format("
             SELECT * FROM ~s.~s
-            WHERE alias = ?
+            WHERE provider = ? AND username = ?
         ", [?KEYSPACE, ?TABLE_ALIAS]),
         values = [
             {provider, Alias#t_alias.provider},
-            {alias, Alias#t_alias.alias}
+            {username, Alias#t_alias.username}
         ]
     }),
     lists:map(fun map_alias/1, cqerl:all_rows(Result)).
@@ -197,7 +197,7 @@ select_alias(#t_alias{} = Alias) ->
 map_alias(Row) ->
     #t_alias{
         provider = proplists:get_value(provider, Row),
-        alias = proplists:get_value(alias, Row),
+        username = proplists:get_value(username, Row),
         user_id = proplists:get_value(user_id, Row)
     }.
 
@@ -210,13 +210,13 @@ insert_user(#t_user{} = User) ->
     {ok, Client} = get_cqerl_client(),
     {ok, _} = cqerl:run_query(Client, #cql_query{
         statement = io_lib:format("
-            INSERT INTO ~s.~s (id, provider, alias, name, active)
+            INSERT INTO ~s.~s (id, provider, username, name, active)
             VALUES (?, ?, ?, ?, ?)
         ", [?KEYSPACE, ?TABLE_USER]),
         values = [
             {id, User#t_user.id},
             {provider, User#t_user.provider},
-            {alias, User#t_user.alias},
+            {username, User#t_user.username},
             {name, User#t_user.name},
             {active, User#t_user.active}
         ]
@@ -254,7 +254,7 @@ map_user(Row) ->
     #t_user{
         id = proplists:get_value(id, Row),
         provider = proplists:get_value(provider, Row),
-        alias = proplists:get_value(alias, Row),
+        username = proplists:get_value(username, Row),
         name = proplists:get_value(name, Row),
         active = proplists:get_value(active, Row)
     }.

@@ -13,13 +13,13 @@
 
 -record(s_server, {
     socket::port(),
-    address=#s_address{},
+    address = #s_address{},
     acceptor::pid()
 }).
 
 -record(s_client, {
     socket::port(),
-    address=#s_address{},
+    address = #s_address{},
     receiver::pid(),
     identity::any()
 }).

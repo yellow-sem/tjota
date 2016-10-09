@@ -1,15 +1,15 @@
--define(ID, string()).
+-define(ID, any()).
 
 -record(t_alias, {
     provider::string(),
-    alias::string(),
+    username::string(),
     user_id::?ID
 }).
 
 -record(t_user, {
     id::?ID,
     provider::string(),
-    alias::string(),
+    username::string(),
     name::string(),
     active::boolean()
 }).

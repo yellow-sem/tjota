@@ -23,14 +23,28 @@
 handle(#s_client{} = Client, ?C_SYS_EXIT, []) ->
     {ok, Client, stop};
 
-handle(#s_client{} = Client, ?C_AUTH_LOGIN, [Identity, Password]) ->
-    [Username, Provider] = string:tokens(Identity, "@"),
+handle(#s_client{} = Client, ?C_AUTH_LOGIN, [Id]) ->
+    case db_auth:login(#t_session{id = Id}) of
+        none -> {ok, Client, {send, self, "none"}};
+        {session, Session} ->
+            {
+                ok, Client#s_client{identity = Session#t_session.user_id},
+                {send, self, uuid:uuid_to_string(Session#t_session.id)}
+            }
+    end;
+
+handle(#s_client{} = Client, ?C_AUTH_LOGIN, [Credential, Password]) ->
+    [Username, Provider] = string:tokens(Credential, "@"),
     {Success, Token} = provider:identity_login(Provider, Username, Password),
     case Success of
         true ->
-            {ok, Client#s_client{identity = Identity}, {send, self, "valid"}};
+            {session, Session} = db_auth:login(Provider, Username, Token),
+            {
+                ok, Client#s_client{identity = Session#t_session.user_id},
+                {send, self, uuid:uuid_to_string(Session#t_session.id)}
+            };
         false ->
-            {ok, Client, {send, self, "invalid"}}
+            {ok, Client, {send, self, "none"}}
     end;
 
 handle(#s_client{} = Client, ?C_AUTH_LOGOUT, []) ->
