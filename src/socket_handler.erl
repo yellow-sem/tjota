@@ -6,8 +6,9 @@
 -include("socket_com.hrl").
 -include("db_com.hrl").
 
--define(ERROR, "err").
--define(SUCCESS, "ok").
+-define(R_ERROR, "err").
+-define(R_SUCCESS, "ok").
+-define(R_UNKNOWN, "unknown").
 
 -define(C_SYS_EXIT, "sys:exit").
 
@@ -28,7 +29,7 @@ handle(#s_client{} = Client, ?C_SYS_EXIT, []) ->
 
 handle(#s_client{} = Client, ?C_AUTH_LOGIN, [Id]) ->
     case db_auth:login(#t_session{id = Id}) of
-        none -> {ok, Client, {send, self, ?ERROR}};
+        none -> {ok, Client, {send, self, ?R_ERROR}};
         {session, Session} ->
             {
                 ok, Client#s_client{identity = Session#t_session.user_id},
@@ -47,7 +48,7 @@ handle(#s_client{} = Client, ?C_AUTH_LOGIN, [Credential, Password]) ->
                 {send, self, uuid:uuid_to_string(Session#t_session.id)}
             };
         false ->
-            {ok, Client, {send, self, ?ERROR}}
+            {ok, Client, {send, self, ?R_ERROR}}
     end;
 
 handle(#s_client{} = Client, ?C_AUTH_LOGOUT, [Id]) ->
@@ -57,10 +58,10 @@ handle(#s_client{} = Client, ?C_AUTH_LOGOUT, [Id]) ->
                                      Session#t_session.token),
             db:delete_session(Session),
 
-            {ok, Client, {send, self, ?SUCCESS}};
+            {ok, Client, {send, self, ?R_SUCCESS}};
 
         [] ->
-            {ok, Client, {send, self, ?ERROR}}
+            {ok, Client, {send, self, ?R_ERROR}}
     end;
 
 handle(#s_client{} = Client, ?C_ROOM_LIST, []) ->
@@ -87,4 +88,4 @@ handle(#s_client{} = Client, ?C_MSG_SEND, [Message]) ->
     {ok, Client, {send, self, "ok"}};
 
 handle(#s_client{} = Client, _Command, _Args) ->
-    {ok, Client, none}.
+    {ok, Client, {send, self, ?R_UNKNOWN}}.
