@@ -28,8 +28,7 @@ handle(#s_client{} = Client, ?C_AUTH_LOGIN, [Identity, Password]) ->
     {Success, Token} = provider:identity_login(Provider, Username, Password),
     case Success of
         true ->
-            Content = io_lib:format("identity ~s valid", [Identity]),
-            {ok, Client#s_client{identity = Identity}, {send, self, Content}};
+            {ok, Client#s_client{identity = Identity}, {send, self, "valid"}};
         false ->
             {ok, Client, {send, self, "invalid"}}
     end;
