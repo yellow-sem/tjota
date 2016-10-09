@@ -1,8 +1,6 @@
 -define(DEFAULT_HOST, {127, 0, 0, 1}).
 -define(DEFAULT_PORT, 8000).
 
--define(ID, string()).
-
 -record(s_address, {
     host = ?DEFAULT_HOST,
     port = ?DEFAULT_PORT
@@ -23,5 +21,5 @@
     socket::port(),
     address=#s_address{},
     receiver::pid(),
-    user_id::?ID
+    user_id::any()
 }).

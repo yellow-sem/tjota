@@ -1,10 +1,6 @@
 -module(socket_util).
 
 -export([
-    strip/1
-]).
-
--export([
     acceptor_start/1,
     acceptor_loop/1
 ]).
@@ -15,9 +11,6 @@
 ]).
 
 -include("socket_com.hrl").
-
-strip(Content) ->
-    re:replace(Content, "(^\\s+)|(\\s+$)", "", [global, {return, list}]).
 
 acceptor_start(Socket) when is_port(Socket) ->
     acceptor_start(#s_handler{socket = Socket, owner = self()});
@@ -43,8 +36,8 @@ receiver_start(#s_handler{} = Handler) ->
 
 receiver_loop(#s_handler{} = Handler) ->
     case gen_tcp:recv(Handler#s_handler.socket, 0) of
-        {ok, Message} ->
-            Handler#s_handler.owner ! {receiver, {message, strip(Message)}},
+        {ok, Payload} ->
+            Handler#s_handler.owner ! {receiver, {payload, Payload}},
             receiver_loop(Handler);
 
         {error, Reason} ->
