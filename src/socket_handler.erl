@@ -4,6 +4,7 @@
 ]).
 
 -include("socket_com.hrl").
+-include("db_com.hrl").
 
 handle(#s_client{} = Client, "sys:exit", []) ->
     {ok, Client, stop};

@@ -1,4 +1,4 @@
--module(tjota_db).
+-module(db).
 -export([
     bootstrap/0
 ]).
@@ -34,8 +34,8 @@
     sym_update_user_room/3
 ]).
 
--include("tjota_com.hrl").
 -include("cqerl.hrl").
+-include("db_com.hrl").
 
 -define(KEYSPACE, "tjota").
 
