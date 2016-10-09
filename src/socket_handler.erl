@@ -6,33 +6,46 @@
 -include("socket_com.hrl").
 -include("db_com.hrl").
 
-handle(#s_client{} = Client, "sys:exit", []) ->
+-define(C_SYS_EXIT, "sys:exit").
+
+-define(C_AUTH_LOGIN, "auth:login").
+-define(C_AUTH_LOGOUT, "auth:logout").
+
+-define(C_ROOM_LIST, "room:list").
+-define(C_ROOM_CREATE, "room:create").
+-define(C_ROOM_LEAVE, "room:leave").
+-define(C_ROOM_INVITE, "room:invite").
+
+-define(C_MSG_RECV, "msg:recv").
+-define(C_MSG_SEND, "msg:send").
+
+handle(#s_client{} = Client, ?C_SYS_EXIT, []) ->
     {ok, Client, stop};
 
-handle(#s_client{} = Client, "auth:login", [Credentials]) ->
-    Reply = io_lib:format("credentials ~s", [Credentials]),
-    {ok, Client, {reply, Reply}};
+handle(#s_client{} = Client, ?C_AUTH_LOGIN, [Credentials]) ->
+    Response = io_lib:format("credentials ~s", [Credentials]),
+    {ok, Client, {send, self, Response}};
 
-handle(#s_client{} = Client, "auth:logout", []) ->
-    {ok, Client, noreply};
+handle(#s_client{} = Client, ?C_AUTH_LOGOUT, []) ->
+    {ok, Client, {send, self, "ok"}};
 
-handle(#s_client{} = Client, "room:list", []) ->
-    {ok, Client, noreply};
+handle(#s_client{} = Client, ?C_ROOM_LIST, []) ->
+    {ok, Client, {send, self, "list"}};
 
-handle(#s_client{} = Client, "room:create", []) ->
-    {ok, Client, noreply};
+handle(#s_client{} = Client, ?C_ROOM_CREATE, []) ->
+    {ok, Client, {send, all, "create"}};
 
-handle(#s_client{} = Client, "room:leave", []) ->
-    {ok, Client, noreply};
+handle(#s_client{} = Client, ?C_ROOM_LEAVE, []) ->
+    {ok, Client, {send, all, "leave"}};
 
-handle(#s_client{} = Client, "room:invite", []) ->
-    {ok, Client, noreply};
+handle(#s_client{} = Client, ?C_ROOM_INVITE, []) ->
+    {ok, Client, {send, all, "invite"}};
 
-handle(#s_client{} = Client, "msg:fetch", []) ->
-    {ok, Client, noreply};
+handle(#s_client{} = Client, ?C_MSG_RECV, []) ->
+    {ok, Client, {send, self, "messages"}};
 
-handle(#s_client{} = Client, "msg:send", []) ->
-    {ok, Client, noreply};
+handle(#s_client{} = Client, ?C_MSG_SEND, [_Message]) ->
+    {ok, Client, {send, self, "ok"}};
 
 handle(#s_client{} = Client, _Command, _Args) ->
-    {ok, Client, noreply}.
+    {ok, Client, none}.

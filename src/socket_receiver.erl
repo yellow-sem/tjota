@@ -37,24 +37,38 @@ handle_cast({socket, Socket}, #s_client{} = _Client) ->
 
 handle_info({receiver, {payload, Payload}}, #s_client{} = Client) ->
     Message = strip(binary_to_list(Payload)),
-    [Command|Args] = string:tokens(Message, ?TOKEN_SEP),
+    [Command, Id | Args] = string:tokens(Message, ?TOKEN_SEP),
+
     {ok, NewClient, Result} = socket_handler:handle(Client, Command, Args),
+
     case Result of
         stop -> {stop, normal, NewClient};
-        noreply -> {noreply, NewClient};
-        {reply, Reply} ->
-            gen_tcp:send(Client#s_client.socket,
-                         io_lib:format("~s ~s~n", [Command, Reply])),
+
+        none -> {noreply, NewClient};
+
+        {send, self, Response} ->
+            send(Client, Command, Id, Response),
+            {noreply, NewClient};
+
+        {send, all, _Response} ->
             {noreply, NewClient}
     end;
 
 handle_info({receiver, {error, Reason}}, #s_client{} = Client) ->
-    {stop, Reason, Client}.
+    {stop, Reason, Client};
+
+handle_info({response, {Command, Response}}, #s_client{} = Client) ->
+    send(Client, Command, any, Response),
+    {noreply, Client}.
 
 terminate(_Reason, #s_client{} = Client) ->
     gen_tcp:close(Client#s_client.socket).
 
 code_change(_OldVsn, #s_client{} = Client, _Extra) -> {ok, Client}.
+
+send(#s_client{} = Client, Command, Id, Response) ->
+    gen_tcp:send(Client#s_client.socket,
+                 io_lib:format("~s ~s ~s~n", [Command, Id, Response])).
 
 strip(Content) ->
     re:replace(Content, "(^\\s+)|(\\s+$)", "", [global, {return, list}]).
