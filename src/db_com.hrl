@@ -24,7 +24,7 @@
 -record(t_room, {
     id::?ID,
     name::string(),
-    type::group|private|bot,
+    type::custom|auto|private|bot|mqtt,
     data::any()
 }).
 
