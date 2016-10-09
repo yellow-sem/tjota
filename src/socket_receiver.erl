@@ -41,8 +41,8 @@ handle_info({receiver, {payload, Payload}}, #s_client{} = Client) ->
     Message = strip(binary_to_list(Payload)),
     Tokens = string:tokens(Message, ?TOKEN_SEP),
     case Tokens of
-        [Command, Id | Args] -> ok;
-        [Command | Args] -> Id = any;
+        [Command, Id|Args] -> ok;
+        [Command|Args] -> Id = any;
         _ -> Command = none, Id = any, Args = []
     end,
 
@@ -63,9 +63,9 @@ handle_info({receiver, {payload, Payload}}, #s_client{} = Client) ->
             {noreply, NewClient};
 
         {send, all, Content} ->
-            User = NewClient#s_client.user,
+            Identity = NewClient#s_client.identity,
             gen_event:notify(socket_receiver_event,
-                             {send, User, Command, Content}),
+                             {send, Identity, Command, Content}),
             {noreply, NewClient}
     end;
 
@@ -83,7 +83,7 @@ code_change(_OldVsn, #s_client{} = Client, _Extra) -> {ok, Client}.
 
 client_change(#s_client{} = OldClient, #s_client{} = NewClient) ->
 
-    if OldClient#s_client.user =/= NewClient#s_client.user ->
+    if OldClient#s_client.identity =/= NewClient#s_client.identity ->
 
         gen_event:delete_handler(socket_receiver_event,
                                  {socket_receiver_event, self()},

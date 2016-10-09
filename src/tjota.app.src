@@ -5,6 +5,8 @@
     {applications, [
         kernel,
         stdlib,
+        inets,
+        ssl,
         cqerl
     ]},
     {mod, {tjota_app, []}},

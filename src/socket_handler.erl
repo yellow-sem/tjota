@@ -13,6 +13,7 @@
 
 -define(C_ROOM_LIST, "room:list").
 -define(C_ROOM_CREATE, "room:create").
+-define(C_ROOM_JOIN, "room:join").
 -define(C_ROOM_LEAVE, "room:leave").
 -define(C_ROOM_INVITE, "room:invite").
 
@@ -22,9 +23,12 @@
 handle(#s_client{} = Client, ?C_SYS_EXIT, []) ->
     {ok, Client, stop};
 
-handle(#s_client{} = Client, ?C_AUTH_LOGIN, [User]) ->
-    Content = io_lib:format("credentials ~s ok", [User]),
-    {ok, Client#s_client{user = User}, {send, self, Content}};
+handle(#s_client{} = Client, ?C_AUTH_LOGIN, [Identity, Password]) ->
+    [Username, Provider] = string:tokens(Identity, "@"),
+
+    Content = io_lib:format("credentials ~s ok", [Username]),
+
+    {ok, Client#s_client{identity = "myident"}, {send, self, Content}};
 
 handle(#s_client{} = Client, ?C_AUTH_LOGOUT, []) ->
     {ok, Client, {send, self, "ok"}};
@@ -34,6 +38,9 @@ handle(#s_client{} = Client, ?C_ROOM_LIST, []) ->
 
 handle(#s_client{} = Client, ?C_ROOM_CREATE, []) ->
     {ok, Client, {send, all, "create"}};
+
+handle(#s_client{} = Client, ?C_ROOM_JOIN, []) ->
+    {ok, Client, {send, all, "join"}};
 
 handle(#s_client{} = Client, ?C_ROOM_LEAVE, []) ->
     {ok, Client, {send, all, "leave"}};
