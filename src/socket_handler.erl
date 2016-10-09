@@ -25,10 +25,14 @@ handle(#s_client{} = Client, ?C_SYS_EXIT, []) ->
 
 handle(#s_client{} = Client, ?C_AUTH_LOGIN, [Identity, Password]) ->
     [Username, Provider] = string:tokens(Identity, "@"),
-
-    Content = io_lib:format("credentials ~s ok", [Username]),
-
-    {ok, Client#s_client{identity = "myident"}, {send, self, Content}};
+    {Success, Token} = provider:identity_login(Provider, Username, Password),
+    case Success of
+        true ->
+            Content = io_lib:format("identity ~s valid", [Identity]),
+            {ok, Client#s_client{identity = Identity}, {send, self, Content}};
+        false ->
+            {ok, Client, {send, self, "invalid"}}
+    end;
 
 handle(#s_client{} = Client, ?C_AUTH_LOGOUT, []) ->
     {ok, Client, {send, self, "ok"}};
