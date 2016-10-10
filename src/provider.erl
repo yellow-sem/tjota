@@ -36,7 +36,23 @@ identity_login("yellow", Username, Password) ->
 
 identity_login(_Provider, _Username, _Password) -> not_implemented.
 
-identity_logout("yellow", Token) -> not_implemented;
+identity_logout("yellow", Token) ->
+    {ok, {_, _, Body}} = httpc:request(post, {
+        "https://api.tjota.online/api/v1/identity/logout/",
+        [{"Authorization", io_lib:format("Token ~s", [Token])}],
+        "application/x-www-form-urlencoded",
+        url_encode([])
+    }, [], []),
+
+    {Data} = jiffy:decode(Body),
+
+    case proplists:lookup(<<"success">>, Data) of
+        {_, Success} -> ok;
+        none -> Success = false
+    end,
+
+    Success;
+
 identity_logout(_Provider, _Token) -> not_implemented.
 
 courses("yellow", Token) -> not_implemented;

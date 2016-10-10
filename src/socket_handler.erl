@@ -54,11 +54,14 @@ handle(#s_client{} = Client, ?C_AUTH_LOGIN, [Credential, Password]) ->
 handle(#s_client{} = Client, ?C_AUTH_LOGOUT, [Id]) ->
     case db:select_session(#t_session{id = Id}) of
         [Session] ->
-            provider:identity_logout(Session#t_session.provider,
-                                     Session#t_session.token),
+            Success = provider:identity_logout(Session#t_session.provider,
+                                               Session#t_session.token),
             db:delete_session(Session),
 
-            {ok, Client, {send, self, ?R_SUCCESS}};
+            case Success of
+                true -> {ok, Client, {send, self, ?R_SUCCESS}};
+                false -> {ok, Client, {send, self, ?R_ERROR}}
+            end;
 
         [] ->
             {ok, Client, {send, self, ?R_ERROR}}

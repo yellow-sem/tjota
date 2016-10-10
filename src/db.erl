@@ -63,6 +63,9 @@ bootstrap() ->
         room_user
     ]).
 
+decode(Value) when is_binary(Value) -> erlang:binary_to_list(Value);
+decode(Value) -> Value.
+
 get_cqerl_client() -> cqerl:get_client({}).
 
 create_keyspace() ->
@@ -198,8 +201,8 @@ select_alias(#t_alias{} = Alias) ->
 
 map_alias(Row) ->
     #t_alias{
-        provider = proplists:get_value(provider, Row),
-        username = proplists:get_value(username, Row),
+        provider = decode(proplists:get_value(provider, Row)),
+        username = decode(proplists:get_value(username, Row)),
         user_id = proplists:get_value(user_id, Row)
     }.
 
@@ -255,9 +258,9 @@ select_user(List) ->
 map_user(Row) ->
     #t_user{
         id = proplists:get_value(id, Row),
-        provider = proplists:get_value(provider, Row),
-        username = proplists:get_value(username, Row),
-        name = proplists:get_value(name, Row),
+        provider = decode(proplists:get_value(provider, Row)),
+        username = decode(proplists:get_value(username, Row)),
+        name = decode(proplists:get_value(name, Row)),
         active = proplists:get_value(active, Row)
     }.
 
@@ -309,7 +312,7 @@ map_session(Row) ->
     #t_session{
         id = proplists:get_value(id, Row),
         user_id = proplists:get_value(user_id, Row),
-        provider = proplists:get_value(provider, Row),
+        provider = decode(proplists:get_value(provider, Row)),
         token = proplists:get_value(token, Row)
     }.
 
@@ -363,8 +366,8 @@ select_room(List) ->
 map_room(Row) ->
     #t_room{
         id = proplists:get_value(id, Row),
-        name = proplists:get_value(name, Row),
-        type = proplists:get_value(type, Row),
+        name = decode(proplists:get_value(name, Row)),
+        type = decode(proplists:get_value(type, Row)),
         data = proplists:get_value(data, Row)
     }.
 
