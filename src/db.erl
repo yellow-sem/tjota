@@ -63,7 +63,7 @@ bootstrap() ->
         room_user
     ]).
 
-decode(Value) when is_binary(Value) -> erlang:binary_to_list(Value);
+decode(Value) when is_binary(Value) -> unicode:characters_to_list(Value);
 decode(Value) -> Value.
 
 get_cqerl_client() -> cqerl:get_client({}).
