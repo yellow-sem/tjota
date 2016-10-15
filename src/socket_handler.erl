@@ -10,6 +10,7 @@
 
 -define(C_AUTH_LOGIN, "auth:login").
 -define(C_AUTH_LOGOUT, "auth:logout").
+-define(C_AUTH_CHECK, "auth:check").
 
 -define(C_ROOM_PING, "room:ping").
 -define(C_ROOM_PONG, "room:pong").
@@ -50,6 +51,12 @@ handle(#s_client{} = Client, ?C_AUTH_LOGOUT, [Id]) ->
     db:delete_session(Session),
     true = provider:identity_logout(Session#t_session.provider,
                                     Session#t_session.token),
+    {ok, Client};
+
+handle(#s_client{} = Client, ?C_AUTH_CHECK, [Credential]) ->
+    [Username, Provider] = string:tokens(Credential, "@"),
+    [#t_alias{}] = db:select_alias(#t_alias{provider = Provider,
+                                            username = Username}),
     {ok, Client};
 
 handle(#s_client{identity = Identity} = Client, ?C_ROOM_PING, []) ->
