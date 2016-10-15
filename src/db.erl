@@ -429,7 +429,7 @@ insert_user_room(#t_user{} = User, #t_room{} = Room, Active) ->
         values = [
             {user_id, User#t_user.id},
             {room_id, Room#t_room.id},
-            Active
+            {active, Active}
         ]
     }).
 
@@ -468,7 +468,7 @@ insert_room_user(#t_room{} = Room, #t_user{} = User, Active) ->
         values = [
             {room_id, Room#t_room.id},
             {user_id, User#t_user.id},
-            Active
+            {active, Active}
         ]
     }).
 

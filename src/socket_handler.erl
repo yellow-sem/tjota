@@ -17,12 +17,15 @@
 
 -define(C_ROOM_LIST, "room:list").
 -define(C_ROOM_CREATE, "room:create").
+-define(C_ROOM_DISCOVER, "room:discover").
 -define(C_ROOM_JOIN, "room:join").
 -define(C_ROOM_LEAVE, "room:leave").
 -define(C_ROOM_INVITE, "room:invite").
 
 -define(C_MSG_RECV, "msg:recv").
 -define(C_MSG_SEND, "msg:send").
+
+-define(C_LINK_EXTRACT, "link:extract").
 
 handle(#s_client{} = Client, ?C_SYS_EXIT, []) ->
     {ok, Client, stop};
@@ -59,19 +62,42 @@ handle(#s_client{} = Client, ?C_AUTH_LOGOUT, [Id]) ->
             db:delete_session(Session),
 
             case Success of
-                true -> {ok, Client, {send, self, ?R_SUCCESS}};
-                false -> {ok, Client, {send, self, ?R_ERROR}}
+                true -> {
+                    ok, Client#s_client{identity = undefined},
+                    {send, self, ?R_SUCCESS}
+                };
+                false -> {
+                    ok, Client#s_client{identity = undefined},
+                    {send, self, ?R_ERROR}
+                }
             end;
 
         [] ->
             {ok, Client, {send, self, ?R_ERROR}}
     end;
 
-handle(#s_client{} = Client, ?C_ROOM_LIST, []) ->
-    {ok, Client, {send, self, "list"}};
+handle(#s_client{identity = Identity} = Client, ?C_ROOM_LIST, []) ->
+    User = #t_user{id = Identity},
+    [
+        send({identity, Identity}, ?C_ROOM_JOIN, format(Room)) ||
+        Room <- db:select_room(db:select_user_room(User))
+    ],
+    {ok, Client, {send, self, ?R_SUCCESS}};
 
-handle(#s_client{} = Client, ?C_ROOM_CREATE, []) ->
-    {ok, Client, {send, all, "create"}};
+handle(#s_client{identity = Identity} = Client, ?C_ROOM_CREATE, [Name]) ->
+    User = #t_user{id = Identity},
+    Room = #t_room{
+        id = uuid:get_v4(),
+        name = Name,
+        type = custom
+    },
+    {ok, _} = db:insert_room(Room),
+    {ok, _} = db:sym_insert_user_room(User, Room, true),
+    send({identity, Identity}, ?C_ROOM_JOIN, format(Room)),
+    {ok, Client, {send, self, ?R_SUCCESS}};
+
+handle(#s_client{} = Client, ?C_ROOM_DISCOVER, []) ->
+    {ok, Client, {send, all, "discover"}};
 
 handle(#s_client{} = Client, ?C_ROOM_JOIN, []) ->
     {ok, Client, {send, all, "join"}};
@@ -80,15 +106,35 @@ handle(#s_client{} = Client, ?C_ROOM_LEAVE, []) ->
     {ok, Client, {send, all, "leave"}};
 
 handle(#s_client{} = Client, ?C_ROOM_INVITE, []) ->
-    {ok, Client, {send, all, "invite"}};
+    {ok, Client, {send, self, "invite"}};
 
 handle(#s_client{} = Client, ?C_MSG_RECV, []) ->
-    {ok, Client, {send, self, "messages"}};
+    {ok, Client, none};
 
 handle(#s_client{} = Client, ?C_MSG_SEND, [Message]) ->
     gen_event:notify(socket_receiver_event,
-                     {send, "anotheruser", ?C_MSG_RECV, Message}),
+                     {send, {identity, "anotheruser"}, ?C_MSG_RECV, Message}),
     {ok, Client, {send, self, "ok"}};
+
+handle(#s_client{} = Client, ?C_LINK_EXTRACT, [Link]) ->
+    {ok, Client, {send, self, Link}};
 
 handle(#s_client{} = Client, _Command, _Args) ->
     {ok, Client, {send, self, ?R_UNKNOWN}}.
+
+send(To, Command, Data) ->
+    gen_event:notify(socket_receiver_event, {send, To, Command, Data}).
+
+format(#t_user{} = User) ->
+    io_lib:format("~s@~s '~s'", [
+        User#t_user.username,
+        User#t_user.provider,
+        User#t_user.name
+    ]);
+
+format(#t_room{} = Room) ->
+    io_lib:format("~s '~s' ~s", [
+        uuid:uuid_to_string(Room#t_room.id),
+        Room#t_room.name,
+        Room#t_room.type
+    ]).

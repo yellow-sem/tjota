@@ -18,9 +18,17 @@ start_link() -> gen_event:start_link({local, socket_receiver_event}).
 
 init(#s_client{} = Client) -> {ok, Client}.
 
-handle_event({send, Identity, Command, Content},
+handle_event({send, {identity, Identity}, Command, Data},
              #s_client{identity = Identity} = Client) ->
-    Client#s_client.receiver ! {content, {Command, Content}},
+    Client#s_client.receiver ! {send, {Command, Data}},
+    {ok, Client};
+
+handle_event({send, {receiver, Receiver}, Command, Data},
+             #s_client{receiver = Receiver} = Client) ->
+    Client#s_client.receiver ! {send, {Command, Data}},
+    {ok, Client};
+
+handle_event({send, _To, _Command, _Data}, #s_client{} = Client) ->
     {ok, Client};
 
 handle_event(_, #s_client{} = Client) -> {ok, Client}.

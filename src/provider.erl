@@ -10,6 +10,9 @@
     course_assignments/3
 ]).
 -export([
+    link_extract/3
+]).
+-export([
     url_encode/1
 ]).
 
@@ -120,6 +123,10 @@ course_assignments("yellow", Token, CourseId) ->
     } || {Data} <- jiffy:decode(Body)]};
 
 course_assignments(_Provider, _Token, _CourseId) -> not_implemented.
+
+link_extract("yellow", _Token, _Link) -> not_implemented;
+
+link_extract(_Provider, _Token, _Link) -> not_implemented.
 
 url_encode({K, V}) ->
     io_lib:format("~s=~s", [edoc_lib:escape_uri(K),

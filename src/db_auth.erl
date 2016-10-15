@@ -29,9 +29,9 @@ login(Provider, Username, Token) ->
                 active = true
             },
 
-            db:insert_user(User),
+            {ok, _} = db:insert_user(User),
 
-            db:insert_alias(#t_alias{
+            {ok, _} = db:insert_alias(#t_alias{
                 provider = Provider,
                 username = Username,
                 user_id = User#t_user.id
@@ -45,5 +45,5 @@ login(Provider, Username, Token) ->
         token = Token
     },
 
-    db:insert_session(Session),
+    {ok, _} = db:insert_session(Session),
     {session, Session}.

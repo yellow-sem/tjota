@@ -58,22 +58,22 @@ handle_info({receiver, {payload, Payload}}, #s_client{} = Client) ->
 
         none -> {noreply, NewClient};
 
-        {send, self, Content} ->
-            send(Client, Command, Id, Content),
+        {send, self, Data} ->
+            send(Client, Command, Id, Data),
             {noreply, NewClient};
 
-        {send, all, Content} ->
+        {send, all, Data} ->
             Identity = NewClient#s_client.identity,
             gen_event:notify(socket_receiver_event,
-                             {send, Identity, Command, Content}),
+                             {send, {identity, Identity}, Command, Data}),
             {noreply, NewClient}
     end;
 
 handle_info({receiver, {error, Reason}}, #s_client{} = Client) ->
     {stop, Reason, Client};
 
-handle_info({content, {Command, Content}}, #s_client{} = Client) ->
-    send(Client, Command, any, Content),
+handle_info({send, {Command, Data}}, #s_client{} = Client) ->
+    send(Client, Command, any, Data),
     {noreply, Client}.
 
 terminate(_Reason, #s_client{} = Client) ->
@@ -95,9 +95,9 @@ client_change(#s_client{} = OldClient, #s_client{} = NewClient) ->
 
     end.
 
-send(#s_client{} = Client, Command, Id, Content) ->
+send(#s_client{} = Client, Command, Id, Data) ->
     gen_tcp:send(Client#s_client.socket,
-                 io_lib:format("~s ~s ~s~n", [Command, Id, Content])).
+                 io_lib:format("~s ~s ~s~n", [Command, Id, Data])).
 
 strip(Content) ->
     re:replace(Content, "(^\\s+)|(\\s+$)", "", [global, {return, list}]).
