@@ -42,7 +42,10 @@ handle_cast({socket, Socket}, #s_client{} = _Client) ->
 
 handle_info({receiver, {payload, Payload}}, #s_client{} = Client) ->
     Message = strip(binary_to_list(Payload)),
-    Tokens = string:tokens(Message, ?TOKEN_SEP),
+    {match, Groups} = re:run(Message, "'([^']+)'|([^\s']+)",
+                             [{capture, all, list}, global]),
+    Tokens = [case Group of [_, _, Token] -> Token; [_, Token] -> Token end
+              || Group <- Groups],
     case Tokens of
         [Command, Id|Args] -> ok;
         [Command|Args] -> Id = any;
