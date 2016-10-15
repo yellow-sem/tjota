@@ -1,5 +1,8 @@
 -define(ID, any()).
 
+-define(T_ROOM_PRIVATE, "private").
+-define(T_ROOM_PUBLIC, "public").
+
 -record(t_alias, {
     provider::string(),
     username::string(),
@@ -24,7 +27,7 @@
 -record(t_room, {
     id::?ID,
     name::string(),
-    type::custom|auto|private|bot|mqtt,
+    type::string(),
     data::any()
 }).
 

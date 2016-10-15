@@ -6,19 +6,13 @@
 -include("socket_com.hrl").
 -include("db_com.hrl").
 
--define(R_ERROR, "err").
--define(R_SUCCESS, "ok").
--define(R_UNKNOWN, "unknown").
-
 -define(C_SYS_EXIT, "sys:exit").
 
 -define(C_AUTH_LOGIN, "auth:login").
 -define(C_AUTH_LOGOUT, "auth:logout").
 
--define(C_ROOM_LIST, "room:list").
--define(C_ROOM_CREATE, "room:create").
--define(C_ROOM_DISCOVER, "room:discover").
--define(C_ROOM_JOIN, "room:join").
+-define(C_ROOM_PING, "room:ping").
+-define(C_ROOM_PONG, "room:pong").
 -define(C_ROOM_LEAVE, "room:leave").
 -define(C_ROOM_INVITE, "room:invite").
 
@@ -27,100 +21,99 @@
 
 -define(C_LINK_EXTRACT, "link:extract").
 
+-define(A_DISCOVER, "discover").
+-define(A_CREATE, "create").
+-define(A_JOIN, "join").
+
 handle(#s_client{} = Client, ?C_SYS_EXIT, []) ->
     {ok, Client, stop};
 
 handle(#s_client{} = Client, ?C_AUTH_LOGIN, [Id]) ->
-    case db_auth:login(#t_session{id = Id}) of
-        none -> {ok, Client, {send, self, ?R_ERROR}};
-        {session, Session} ->
-            {
-                ok, Client#s_client{identity = Session#t_session.user_id},
-                {send, self, uuid:uuid_to_string(Session#t_session.id)}
-            }
-    end;
+    {session, Session} = db_auth:login(#t_session{id = Id}),
+    {
+        ok, Client#s_client{identity = Session#t_session.user_id},
+        uuid:uuid_to_string(Session#t_session.id)
+    };
 
 handle(#s_client{} = Client, ?C_AUTH_LOGIN, [Credential, Password]) ->
     [Username, Provider] = string:tokens(Credential, "@"),
-    {Success, Token} = provider:identity_login(Provider, Username, Password),
-    case Success of
-        true ->
-            {session, Session} = db_auth:login(Provider, Username, Token),
-            {
-                ok, Client#s_client{identity = Session#t_session.user_id},
-                {send, self, uuid:uuid_to_string(Session#t_session.id)}
-            };
-        false ->
-            {ok, Client, {send, self, ?R_ERROR}}
-    end;
+    {true, Token} = provider:identity_login(Provider, Username, Password),
+    {session, Session} = db_auth:login(Provider, Username, Token),
+    {
+        ok, Client#s_client{identity = Session#t_session.user_id},
+        uuid:uuid_to_string(Session#t_session.id)
+    };
 
 handle(#s_client{} = Client, ?C_AUTH_LOGOUT, [Id]) ->
-    case db:select_session(#t_session{id = Id}) of
-        [Session] ->
-            Success = provider:identity_logout(Session#t_session.provider,
-                                               Session#t_session.token),
-            db:delete_session(Session),
+    [Session] = db:select_session(#t_session{id = Id}),
+    db:delete_session(Session),
+    true = provider:identity_logout(Session#t_session.provider,
+                                    Session#t_session.token),
+    {ok, Client};
 
-            case Success of
-                true -> {
-                    ok, Client#s_client{identity = undefined},
-                    {send, self, ?R_SUCCESS}
-                };
-                false -> {
-                    ok, Client#s_client{identity = undefined},
-                    {send, self, ?R_ERROR}
-                }
-            end;
-
-        [] ->
-            {ok, Client, {send, self, ?R_ERROR}}
-    end;
-
-handle(#s_client{identity = Identity} = Client, ?C_ROOM_LIST, []) ->
+handle(#s_client{identity = Identity} = Client, ?C_ROOM_PING, []) ->
     User = #t_user{id = Identity},
     [
-        send({identity, Identity}, ?C_ROOM_JOIN, format(Room)) ||
+        send({identity, Identity}, ?C_ROOM_PONG, format(Room)) ||
         Room <- db:select_room(db:select_user_room(User))
     ],
-    {ok, Client, {send, self, ?R_SUCCESS}};
+    {ok, Client};
 
-handle(#s_client{identity = Identity} = Client, ?C_ROOM_CREATE, [Name]) ->
+handle(#s_client{} = Client,
+       ?C_ROOM_PING, [?A_DISCOVER]) ->
+    {ok, Client};
+
+handle(#s_client{identity = Identity} = Client,
+       ?C_ROOM_PING, [?A_CREATE, Name, Type]) ->
     User = #t_user{id = Identity},
     Room = #t_room{
         id = uuid:get_v4(),
         name = Name,
-        type = custom
+        type = Type
     },
     {ok, _} = db:insert_room(Room),
     {ok, _} = db:sym_insert_user_room(User, Room, true),
-    send({identity, Identity}, ?C_ROOM_JOIN, format(Room)),
-    {ok, Client, {send, self, ?R_SUCCESS}};
+    send({identity, Identity}, ?C_ROOM_PONG, format(Room)),
+    {ok, Client};
 
-handle(#s_client{} = Client, ?C_ROOM_DISCOVER, []) ->
-    {ok, Client, {send, all, "discover"}};
+handle(#s_client{identity = Identity} = Client,
+       ?C_ROOM_PING, [?A_JOIN, Id]) ->
+    User = #t_user{id = Identity},
+    Room = #t_room{id = Id},
+    [#t_room{type = ?T_ROOM_PUBLIC}] = db:select_room(Room),
+    {ok, _} = db:sym_insert_user_room(User, Room, true),
+    send({identity, Identity}, ?C_ROOM_PONG, format(Room)),
+    {ok, Client};
 
-handle(#s_client{} = Client, ?C_ROOM_JOIN, []) ->
-    {ok, Client, {send, all, "join"}};
+handle(#s_client{identity = Identity} = Client, ?C_ROOM_LEAVE, [Id]) ->
+    User = #t_user{id = Identity},
+    Room = #t_room{id = Id},
+    {ok, _} = db:sym_update_user_room(User, Room, false),
+    send({identity, Identity}, ?C_ROOM_LEAVE, Id),
+    {ok, Client};
 
-handle(#s_client{} = Client, ?C_ROOM_LEAVE, []) ->
-    {ok, Client, {send, all, "leave"}};
-
-handle(#s_client{} = Client, ?C_ROOM_INVITE, []) ->
-    {ok, Client, {send, self, "invite"}};
-
-handle(#s_client{} = Client, ?C_MSG_RECV, []) ->
-    {ok, Client, none};
+handle(#s_client{identity = Identity} = Client,
+       ?C_ROOM_INVITE, [Id, Credential]) ->
+    User = #t_user{id = Identity},
+    Room = #t_room{id = Id},
+    [_] = db:select_user_room(User, Room),
+    [Username, Provider] = string:tokens(Credential, "@"),
+    [#t_alias{} = Alias] = db:select_alias(#t_alias{provider = Provider,
+                                                    username = Username}),
+    {ok, _} = db:sym_insert_user_room(#t_user{id = Alias#t_alias.user_id},
+                                      Room, true),
+    send({identity, Alias#t_alias.user_id}, ?C_ROOM_INVITE, format(Room)),
+    {ok, Client};
 
 handle(#s_client{} = Client, ?C_MSG_SEND, [Message]) ->
     gen_event:notify(socket_receiver_event,
                      {send, {identity, "anotheruser"}, ?C_MSG_RECV, Message}),
-    {ok, Client, {send, self, "ok"}};
+    {ok, Client};
 
 handle(#s_client{} = Client, ?C_LINK_EXTRACT, [Link]) ->
-    {ok, Client, {send, self, Link}};
+    {ok, Client, Link};
 
-handle(#s_client{} = Client, _Command, _Args) ->
-    {ok, Client, {send, self, ?R_UNKNOWN}}.
+handle(#s_client{} = _Client, _Command, _Args) -> not_implemented.
 
 send(To, Command, Data) ->
     gen_event:notify(socket_receiver_event, {send, To, Command, Data}).

@@ -4,7 +4,6 @@
 ]).
 -export([
     insert_alias/1,
-    update_alias/1,
     select_alias/1
 ]).
 -export([
@@ -28,7 +27,9 @@
 ]).
 -export([
     select_user_room/1,
-    select_room_user/1
+    select_user_room/2,
+    select_room_user/1,
+    select_room_user/2
 ]).
 -export([
     sym_insert_user_room/3,
@@ -183,8 +184,6 @@ insert_alias(#t_alias{} = Alias) ->
         ]
     }).
 
-update_alias(#t_alias{} = Alias) -> insert_alias(Alias).
-
 select_alias(#t_alias{} = Alias) ->
     {ok, Client} = get_cqerl_client(),
     {ok, Result} = cqerl:run_query(Client, #cql_query{
@@ -335,7 +334,21 @@ insert_room(#t_room{} = Room) ->
         ]
     }).
 
-update_room(#t_room{} = Room) -> insert_room(Room).
+update_room(#t_room{} = Room) ->
+    {ok, Client} = get_cqerl_client(),
+    {ok, _} = cqerl:run_query(Client, #cql_query{
+        statement = io_lib:format("
+            UPDATE ~s.~s
+            SET name = ?, type = ?, data = ?
+            WHERE id = ?
+        ", [?KEYSPACE, ?TABLE_ROOM]),
+        values = [
+            {id, Room#t_room.id},
+            {name, Room#t_room.name},
+            {type, Room#t_room.type},
+            {data, Room#t_room.data}
+        ]
+    }).
 
 select_room(#t_room{} = Room) ->
     {ok, Client} = get_cqerl_client(),
@@ -425,6 +438,7 @@ insert_user_room(#t_user{} = User, #t_room{} = Room, Active) ->
         statement = io_lib:format("
             INSERT INTO ~s.~s (user_id, room_id, active)
             VALUES (?, ?, ?)
+            IF NOT EXISTS
         ", [?KEYSPACE, ?TABLE_USER_ROOM]),
         values = [
             {user_id, User#t_user.id},
@@ -434,17 +448,45 @@ insert_user_room(#t_user{} = User, #t_room{} = Room, Active) ->
     }).
 
 update_user_room(#t_user{} = User, #t_room{} = Room, Active) ->
-    insert_user_room(User, Room, Active).
+    {ok, Client} = get_cqerl_client(),
+    {ok, _} = cqerl:run_query(Client, #cql_query{
+        statement = io_lib:format("
+            UPDATE ~s.~s
+            SET active = ?
+            WHERE user_id = ? AND room_id = ?
+        ", [?KEYSPACE, ?TABLE_USER_ROOM]),
+        values = [
+            {user_id, User#t_user.id},
+            {room_id, Room#t_room.id},
+            {active, Active}
+        ]
+    }).
 
 select_user_room(#t_user{} = User) ->
     {ok, Client} = get_cqerl_client(),
     {ok, Result} = cqerl:run_query(Client, #cql_query{
         statement = io_lib:format("
             SELECT * FROM ~s.~s
-            WHERE user_id = ?
+            WHERE user_id = ? AND active = TRUE
+            ALLOW FILTERING
         ", [?KEYSPACE, ?TABLE_USER_ROOM]),
         values = [
             {user_id, User#t_user.id}
+        ]
+    }),
+    lists:map(fun map_user_room/1, cqerl:all_rows(Result)).
+
+select_user_room(#t_user{} = User, #t_room{} = Room) ->
+    {ok, Client} = get_cqerl_client(),
+    {ok, Result} = cqerl:run_query(Client, #cql_query{
+        statement = io_lib:format("
+            SELECT * FROM ~s.~s
+            WHERE user_id = ? AND room_id = ? AND active = TRUE
+            ALLOW FILTERING
+        ", [?KEYSPACE, ?TABLE_USER_ROOM]),
+        values = [
+            {user_id, User#t_user.id},
+            {room_id, Room#t_room.id}
         ]
     }),
     lists:map(fun map_user_room/1, cqerl:all_rows(Result)).
@@ -464,6 +506,7 @@ insert_room_user(#t_room{} = Room, #t_user{} = User, Active) ->
         statement = io_lib:format("
             INSERT INTO ~s.~s (room_id, user_id, active)
             VALUES (?, ?, ?)
+            IF NOT EXISTS
         ", [?KEYSPACE, ?TABLE_ROOM_USER]),
         values = [
             {room_id, Room#t_room.id},
@@ -473,17 +516,45 @@ insert_room_user(#t_room{} = Room, #t_user{} = User, Active) ->
     }).
 
 update_room_user(#t_room{} = Room, #t_user{} = User, Active) ->
-    insert_room_user(Room, User, Active).
+    {ok, Client} = get_cqerl_client(),
+    {ok, _} = cqerl:run_query(Client, #cql_query{
+        statement = io_lib:format("
+            UPDATE ~s.~s
+            SET active = ?
+            WHERE room_id = ? AND user_id = ?
+        ", [?KEYSPACE, ?TABLE_ROOM_USER]),
+        values = [
+            {room_id, Room#t_room.id},
+            {user_id, User#t_user.id},
+            {active, Active}
+        ]
+    }).
 
 select_room_user(#t_room{} = Room) ->
     {ok, Client} = get_cqerl_client(),
     {ok, Result} = cqerl:run_query(Client, #cql_query{
         statement = io_lib:format("
             SELECT * FROM ~s.~s
-            WHERE room_id = ?
+            WHERE room_id = ? AND active = TRUE
+            ALLOW FILTERING
         ", [?KEYSPACE, ?TABLE_ROOM_USER]),
         values = [
             {room_id, Room#t_user.id}
+        ]
+    }),
+    lists:map(fun map_room_user/1, cqerl:all_rows(Result)).
+
+select_room_user(#t_room{} = Room, #t_user{} = User) ->
+    {ok, Client} = get_cqerl_client(),
+    {ok, Result} = cqerl:run_query(Client, #cql_query{
+        statement = io_lib:format("
+            SELECT * FROM ~s.~s
+            WHERE room_id = ? AND user_id = ? AND active = TRUE
+            ALLOW FILTERING
+        ", [?KEYSPACE, ?TABLE_ROOM_USER]),
+        values = [
+            {room_id, Room#t_room.id},
+            {user_id, User#t_user.id}
         ]
     }),
     lists:map(fun map_room_user/1, cqerl:all_rows(Result)).

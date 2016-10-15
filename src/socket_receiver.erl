@@ -16,6 +16,9 @@
 
 -define(TOKEN_SEP, " ").
 
+-define(R_ERROR, "err").
+-define(R_SUCCESS, "ok").
+
 start_link() -> gen_server:start_link(?MODULE, default, []).
 
 init(default) -> init(#s_client{});
@@ -46,7 +49,12 @@ handle_info({receiver, {payload, Payload}}, #s_client{} = Client) ->
         _ -> Command = none, Id = any, Args = []
     end,
 
-    {ok, NewClient, Result} = socket_handler:handle(Client, Command, Args),
+    Result = case (catch socket_handler:handle(Client, Command, Args)) of
+        {ok, NewClient, stop} -> stop;
+        {ok, NewClient} -> ok;
+        {ok, NewClient, Other} -> {ok, Other};
+        _ -> NewClient = Client, erlang:display(erlang:get_stacktrace()), err
+    end,
 
     if
         Client =/= NewClient -> client_change(Client, NewClient);
@@ -55,18 +63,9 @@ handle_info({receiver, {payload, Payload}}, #s_client{} = Client) ->
 
     case Result of
         stop -> {stop, normal, NewClient};
-
-        none -> {noreply, NewClient};
-
-        {send, self, Data} ->
-            send(Client, Command, Id, Data),
-            {noreply, NewClient};
-
-        {send, all, Data} ->
-            Identity = NewClient#s_client.identity,
-            gen_event:notify(socket_receiver_event,
-                             {send, {identity, Identity}, Command, Data}),
-            {noreply, NewClient}
+        ok -> send(Client, Command, Id, ?R_SUCCESS), {noreply, NewClient};
+        err -> send(Client, Command, Id, ?R_ERROR), {noreply, NewClient};
+        {ok, Data} -> send(Client, Command, Id, Data), {noreply, NewClient}
     end;
 
 handle_info({receiver, {error, Reason}}, #s_client{} = Client) ->

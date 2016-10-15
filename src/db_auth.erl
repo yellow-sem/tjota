@@ -7,10 +7,8 @@
 -include("db_com.hrl").
 
 login(#t_session{id = Id} = _) ->
-    case db:select_session(#t_session{id = Id}) of
-        [Session] -> {session, Session};
-        [] -> none
-    end.
+    [Session] = db:select_session(#t_session{id = Id}),
+    {session, Session}.
 
 login(Provider, Username, Token) ->
     case db:select_alias(#t_alias{provider = Provider,
