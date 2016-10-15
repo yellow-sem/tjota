@@ -4,6 +4,9 @@
     start_link/0
 ]).
 -export([
+    send/3
+]).
+-export([
     init/1,
     handle_event/2,
     handle_call/2,
@@ -14,7 +17,12 @@
 
 -include("socket_com.hrl").
 
-start_link() -> gen_event:start_link({local, socket_receiver_event}).
+-define(MANAGER, socket_receiver_event).
+
+start_link() -> gen_event:start_link({local, ?MANAGER}).
+
+send(To, Command, Data) ->
+    gen_event:notify(?MANAGER, {send, To, Command, Data}).
 
 init(#s_client{} = Client) -> {ok, Client}.
 

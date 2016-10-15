@@ -197,8 +197,7 @@ handle(#s_client{} = Client, ?C_LINK_EXTRACT, [Link]) ->
 
 handle(#s_client{} = _Client, _Command, _Args) -> not_implemented.
 
-send(To, Command, Data) ->
-    gen_event:notify(socket_receiver_event, {send, To, Command, Data}).
+send(To, Command, Data) -> socket_receiver_event:send(To, Command, Data).
 
 format(#t_user{} = User) ->
     io_lib:format("~s ~s@~s", [
