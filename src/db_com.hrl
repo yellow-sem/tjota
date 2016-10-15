@@ -32,7 +32,7 @@
 }).
 
 -record(t_message, {
-    room_id::?ID|[?ID],
+    room_id::?ID,
     timestamp::any(),
     id::?ID,
     user_id::?ID,

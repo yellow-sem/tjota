@@ -79,7 +79,7 @@ handle(#s_client{identity = Identity} = Client,
 handle(#s_client{identity = Identity} = Client,
        ?C_ROOM_PING, [?A_JOIN, Id]) ->
     User = #t_user{id = Identity},
-    Room = #t_room{id = Id},
+    Room = #t_room{id = uuid:string_to_uuid(Id)},
     [#t_room{type = ?T_ROOM_PUBLIC}] = db:select_room(Room),
     {ok, _} = db:sym_insert_user_room(User, Room, true),
     send({identity, Identity}, ?C_ROOM_PONG, format(Room)),
@@ -87,7 +87,7 @@ handle(#s_client{identity = Identity} = Client,
 
 handle(#s_client{identity = Identity} = Client, ?C_ROOM_LEAVE, [Id]) ->
     User = #t_user{id = Identity},
-    Room = #t_room{id = Id},
+    Room = #t_room{id = uuid:string_to_uuid(Id)},
     {ok, _} = db:sym_update_user_room(User, Room, false),
     send({identity, Identity}, ?C_ROOM_LEAVE, Id),
     {ok, Client};
@@ -95,7 +95,7 @@ handle(#s_client{identity = Identity} = Client, ?C_ROOM_LEAVE, [Id]) ->
 handle(#s_client{identity = Identity} = Client,
        ?C_ROOM_INVITE, [Id, Credential]) ->
     User = #t_user{id = Identity},
-    Room = #t_room{id = Id},
+    Room = #t_room{id = uuid:string_to_uuid(Id)},
     [_] = db:select_user_room(User, Room),
     [Username, Provider] = string:tokens(Credential, "@"),
     [#t_alias{} = Alias] = db:select_alias(#t_alias{provider = Provider,
@@ -105,9 +105,17 @@ handle(#s_client{identity = Identity} = Client,
     send({identity, Alias#t_alias.user_id}, ?C_ROOM_INVITE, format(Room)),
     {ok, Client};
 
-handle(#s_client{} = Client, ?C_MSG_SEND, [Message]) ->
-    gen_event:notify(socket_receiver_event,
-                     {send, {identity, "anotheruser"}, ?C_MSG_RECV, Message}),
+handle(#s_client{identity = Identity} = Client, ?C_MSG_SEND, [Id, Data]) ->
+    User = #t_user{id = Identity},
+    Room = #t_room{id = uuid:string_to_uuid(Id)},
+    Message = #t_message{
+        room_id = Room#t_room.id,
+        timestamp = 0,
+        id = uuid:get_v4(),
+        user_id = User#t_user.id,
+        data = Data
+    },
+    send({identity, Identity}, ?C_MSG_RECV, format(Message)),
     {ok, Client};
 
 handle(#s_client{} = Client, ?C_LINK_EXTRACT, [Link]) ->
@@ -130,4 +138,12 @@ format(#t_room{} = Room) ->
         uuid:uuid_to_string(Room#t_room.id),
         Room#t_room.name,
         Room#t_room.type
+    ]);
+
+format(#t_message{} = Message) ->
+    io_lib:format("~s ~p ~s '~s'", [
+        uuid:uuid_to_string(Message#t_message.room_id),
+        Message#t_message.timestamp,
+        uuid:uuid_to_string(Message#t_message.user_id),
+        Message#t_message.data
     ]).
