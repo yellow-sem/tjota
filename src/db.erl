@@ -438,7 +438,6 @@ insert_user_room(#t_user{} = User, #t_room{} = Room, Active) ->
         statement = io_lib:format("
             INSERT INTO ~s.~s (user_id, room_id, active)
             VALUES (?, ?, ?)
-            IF NOT EXISTS
         ", [?KEYSPACE, ?TABLE_USER_ROOM]),
         values = [
             {user_id, User#t_user.id},
@@ -506,7 +505,6 @@ insert_room_user(#t_room{} = Room, #t_user{} = User, Active) ->
         statement = io_lib:format("
             INSERT INTO ~s.~s (room_id, user_id, active)
             VALUES (?, ?, ?)
-            IF NOT EXISTS
         ", [?KEYSPACE, ?TABLE_ROOM_USER]),
         values = [
             {room_id, Room#t_room.id},
