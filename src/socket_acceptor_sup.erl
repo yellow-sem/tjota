@@ -37,6 +37,15 @@ init([]) ->
             infinity,
             supervisor,
             []
+        },
+
+        {
+            socket_handler_sup,
+            {socket_handler_sup, start_link, []},
+            permanent,
+            infinity,
+            supervisor,
+            []
         }
     ],
     {ok, {Flags, Children}}.

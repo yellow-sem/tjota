@@ -50,11 +50,15 @@ handle_info({receiver, {payload, Payload}}, #s_client{} = Client) ->
         _ -> Command = none, Id = any, Args = []
     end,
 
-    Result = case (catch socket_handler:handle(Client, Command, Args)) of
+    {ok, Process} = supervisor:start_child(socket_handler_sup, []),
+    ok = gen_server:call(Process, {client, Client}),
+    Handle = (catch gen_server:call(Process, {handle, Command, Args})),
+
+    Result = case Handle of
         {ok, NewClient, stop} -> stop;
         {ok, NewClient} -> ok;
         {ok, NewClient, Other} -> {ok, Other};
-        _ -> NewClient = Client, erlang:display(erlang:get_stacktrace()), err
+        _ -> NewClient = Client, err
     end,
 
     if

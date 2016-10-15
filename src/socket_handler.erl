@@ -1,6 +1,15 @@
 -module(socket_handler).
+-behaviour(gen_server).
 -export([
-    handle/3
+    start_link/0
+]).
+-export([
+    init/1,
+    handle_call/3,
+    handle_cast/2,
+    handle_info/2,
+    terminate/2,
+    code_change/3
 ]).
 
 -include("socket_com.hrl").
@@ -27,6 +36,23 @@
 -define(A_CREATE, "create").
 -define(A_JOIN, "join").
 -define(A_INVITE, "invite").
+
+start_link() -> gen_server:start_link(?MODULE, default, []).
+
+init(default) -> {ok, new}.
+
+handle_call({client, Client}, _From, new) -> {reply, ok, Client};
+
+handle_call({handle, Command, Args}, _From, #s_client{} = Client) ->
+    {stop, normal, handle(Client, Command, Args), done}.
+
+handle_cast(_Request, Client) -> {noreply, Client}.
+
+handle_info(_Info, Client) -> {noreply, Client}.
+
+terminate(_Reason, _Client) -> ok.
+
+code_change(_OldVsn, #s_client{} = Client, _Extra) -> {ok, Client}.
 
 handle(#s_client{} = Client, ?C_SYS_EXIT, []) ->
     {ok, Client, stop};
