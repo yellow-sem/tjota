@@ -537,7 +537,7 @@ select_room_user(#t_room{} = Room) ->
             ALLOW FILTERING
         ", [?KEYSPACE, ?TABLE_ROOM_USER]),
         values = [
-            {room_id, Room#t_user.id}
+            {room_id, Room#t_room.id}
         ]
     }),
     lists:map(fun map_room_user/1, cqerl:all_rows(Result)).

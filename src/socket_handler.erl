@@ -15,6 +15,7 @@
 -define(C_ROOM_PONG, "room:pong").
 -define(C_ROOM_LEAVE, "room:leave").
 -define(C_ROOM_INVITE, "room:invite").
+-define(C_ROOM_USER, "room:user").
 
 -define(C_MSG_RECV, "msg:recv").
 -define(C_MSG_SEND, "msg:send").
@@ -105,6 +106,16 @@ handle(#s_client{identity = Identity} = Client,
     send({identity, Alias#t_alias.user_id}, ?C_ROOM_INVITE, format(Room)),
     {ok, Client};
 
+handle(#s_client{identity = Identity} = Client, ?C_ROOM_USER, [Id]) ->
+    User = #t_user{id = Identity},
+    Room = #t_room{id = uuid:string_to_uuid(Id)},
+    [_] = db:select_user_room(User, Room),
+    [
+        send({identity, Identity}, ?C_ROOM_USER, format(Room, User)) ||
+        User <- db:select_user(db:select_room_user(Room))
+    ],
+    {ok, Client};
+
 handle(#s_client{identity = Identity} = Client, ?C_MSG_SEND, [Id, Data]) ->
     User = #t_user{id = Identity},
     Room = #t_room{id = uuid:string_to_uuid(Id)},
@@ -127,10 +138,10 @@ send(To, Command, Data) ->
     gen_event:notify(socket_receiver_event, {send, To, Command, Data}).
 
 format(#t_user{} = User) ->
-    io_lib:format("~s@~s '~s'", [
+    io_lib:format("~s ~s@~s", [
+        uuid:uuid_to_string(User#t_user.id),
         User#t_user.username,
-        User#t_user.provider,
-        User#t_user.name
+        User#t_user.provider
     ]);
 
 format(#t_room{} = Room) ->
@@ -146,4 +157,10 @@ format(#t_message{} = Message) ->
         Message#t_message.timestamp,
         uuid:uuid_to_string(Message#t_message.user_id),
         Message#t_message.data
+    ]).
+
+format(#t_room{} = Room, #t_user{} = User) ->
+    io_lib:format("~s ~s", [
+        uuid:uuid_to_string(Room#t_room.id),
+        format(User)
     ]).
