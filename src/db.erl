@@ -409,12 +409,11 @@ select_message(#t_message{} = Message) ->
     {ok, Result} = cqerl:run_query(Client, #cql_query{
         statement = io_lib:format("
             SELECT * FROM ~s.~s
-            WHERE room_id IN ? AND timestamp >= ?
+            WHERE room_id = ?
             ORDER BY timestamp ASC
         ", [?KEYSPACE, ?TABLE_MESSAGE]),
         values = [
-            {'in(room_id)', Message#t_message.room_id},
-            {timestamp, Message#t_message.timestamp}
+            {room_id, Message#t_message.room_id}
         ]
     }),
     lists:map(fun map_message/1, cqerl:all_rows(Result)).

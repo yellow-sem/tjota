@@ -19,6 +19,7 @@
 
 -define(C_MSG_RECV, "msg:recv").
 -define(C_MSG_SEND, "msg:send").
+-define(C_MSG_REQ, "msg:req").
 
 -define(C_LINK_EXTRACT, "link:extract").
 
@@ -70,8 +71,7 @@ handle(#s_client{identity = Identity} = Client, ?C_ROOM_PING, []) ->
     ],
     {ok, Client};
 
-handle(#s_client{} = Client,
-       ?C_ROOM_PING, [?A_DISCOVER]) ->
+handle(#s_client{} = Client, ?C_ROOM_PING, [?A_DISCOVER]) ->
     {ok, Client};
 
 handle(#s_client{identity = Identity} = Client,
@@ -153,6 +153,16 @@ handle(#s_client{identity = Identity} = Client, ?C_MSG_SEND, [Id, Data]) ->
     [
         send({identity, I}, ?C_MSG_RECV, format(Message))
         || #t_user{id = I} <- db:select_room_user(Room)
+    ],
+    {ok, Client};
+
+handle(#s_client{identity = Identity} = Client, ?C_MSG_REQ, [Id]) ->
+    User = #t_user{id = Identity},
+    Room = #t_room{id = uuid:string_to_uuid(Id)},
+    [_] = db:select_user_room(User, Room),
+    [
+        send({identity, Identity}, ?C_MSG_RECV, format(M))
+        || M <- db:select_message(#t_message{room_id = Room#t_room.id})
     ],
     {ok, Client};
 

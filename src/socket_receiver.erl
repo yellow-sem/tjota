@@ -14,8 +14,6 @@
 
 -include("socket_com.hrl").
 
--define(TOKEN_SEP, " ").
-
 -define(R_ERROR, "err").
 -define(R_SUCCESS, "ok").
 
