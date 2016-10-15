@@ -394,7 +394,7 @@ insert_message(#t_message{} = Message) ->
         statement = io_lib:format("
             INSERT INTO ~s.~s (room_id, timestamp, id, user_id, data)
             VALUES (?, ?, ?, ?, ?)
-        ", [?KEYSPACE, ?TABLE_ROOM]),
+        ", [?KEYSPACE, ?TABLE_MESSAGE]),
         values = [
             {room_id, Message#t_message.room_id},
             {timestamp, Message#t_message.timestamp},

@@ -46,12 +46,15 @@ handle(#s_client{} = Client, ?C_AUTH_LOGIN, [Credential, Password]) ->
         uuid:uuid_to_string(Session#t_session.id)
     };
 
+handle(#s_client{identity = undefined} = _Client, _Command, _Args) ->
+    unauthorized;
+
 handle(#s_client{} = Client, ?C_AUTH_LOGOUT, [Id]) ->
     [Session] = db:select_session(#t_session{id = Id}),
     db:delete_session(Session),
     true = provider:identity_logout(Session#t_session.provider,
                                     Session#t_session.token),
-    {ok, Client};
+    {ok, Client#s_client{identity = undefined}};
 
 handle(#s_client{} = Client, ?C_AUTH_CHECK, [Credential]) ->
     [Username, Provider] = string:tokens(Credential, "@"),
@@ -141,13 +144,16 @@ handle(#s_client{identity = Identity} = Client, ?C_MSG_SEND, [Id, Data]) ->
     Room = #t_room{id = uuid:string_to_uuid(Id)},
     Message = #t_message{
         room_id = Room#t_room.id,
-        timestamp = 0,
+        timestamp = now,
         id = uuid:get_v4(),
         user_id = User#t_user.id,
         data = Data
     },
-    % TODO: Send ?C_MSG_RECV to room members
-    send({identity, Identity}, ?C_MSG_RECV, format(Message)),
+    {ok, _} = db:insert_message(Message),
+    [
+        send({identity, I}, ?C_MSG_RECV, format(Message))
+        || #t_user{id = I} <- db:select_room_user(Room)
+    ],
     {ok, Client};
 
 handle(#s_client{} = Client, ?C_LINK_EXTRACT, [Link]) ->
