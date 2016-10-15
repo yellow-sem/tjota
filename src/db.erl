@@ -89,7 +89,7 @@ create_table(user) ->
             id UUID,
             provider TEXT,
             username TEXT,
-            name TEXT,
+            status TEXT,
             active BOOLEAN,
             PRIMARY KEY (id)
         )
@@ -214,14 +214,14 @@ insert_user(#t_user{} = User) ->
     {ok, Client} = get_cqerl_client(),
     {ok, _} = cqerl:run_query(Client, #cql_query{
         statement = io_lib:format("
-            INSERT INTO ~s.~s (id, provider, username, name, active)
+            INSERT INTO ~s.~s (id, provider, username, status, active)
             VALUES (?, ?, ?, ?, ?)
         ", [?KEYSPACE, ?TABLE_USER]),
         values = [
             {id, User#t_user.id},
             {provider, User#t_user.provider},
             {username, User#t_user.username},
-            {name, User#t_user.name},
+            {status, User#t_user.status},
             {active, User#t_user.active}
         ]
     }).
@@ -259,7 +259,7 @@ map_user(Row) ->
         id = proplists:get_value(id, Row),
         provider = decode(proplists:get_value(provider, Row)),
         username = decode(proplists:get_value(username, Row)),
-        name = decode(proplists:get_value(name, Row)),
+        status = decode(proplists:get_value(status, Row)),
         active = proplists:get_value(active, Row)
     }.
 

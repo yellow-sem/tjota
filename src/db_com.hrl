@@ -13,7 +13,7 @@
     id::?ID,
     provider::string(),
     username::string(),
-    name::string(),
+    status::string(),
     active::boolean()
 }).
 

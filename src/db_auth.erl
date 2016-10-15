@@ -23,7 +23,6 @@ login(Provider, Username, Token) ->
                 id = uuid:get_v4(),
                 provider = Provider,
                 username = Username,
-                name = Username,
                 active = true
             },
 

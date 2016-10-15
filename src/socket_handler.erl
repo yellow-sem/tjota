@@ -175,11 +175,10 @@ send(To, Command, Data) ->
     gen_event:notify(socket_receiver_event, {send, To, Command, Data}).
 
 format(#t_user{} = User) ->
-    io_lib:format("~s ~s@~s '~s'", [
+    io_lib:format("~s ~s@~s", [
         uuid:uuid_to_string(User#t_user.id),
         User#t_user.username,
-        User#t_user.provider,
-        User#t_user.name
+        User#t_user.provider
     ]);
 
 format(#t_room{} = Room) ->
