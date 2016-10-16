@@ -14,8 +14,8 @@
 
 -include("socket_com.hrl").
 
--define(R_ERROR, "err").
 -define(R_SUCCESS, "ok").
+-define(R_ERROR, "err").
 
 start_link() -> gen_server:start_link(?MODULE, default, []).
 
