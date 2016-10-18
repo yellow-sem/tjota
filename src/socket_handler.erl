@@ -12,8 +12,8 @@
     code_change/3
 ]).
 
--include("socket_com.hrl").
--include("db_com.hrl").
+-include("socket_rec.hrl").
+-include("db_rec.hrl").
 
 -define(C_SYS_EXIT, "sys:exit").
 

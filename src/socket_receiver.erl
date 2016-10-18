@@ -12,7 +12,7 @@
     code_change/3
 ]).
 
--include("socket_com.hrl").
+-include("socket_rec.hrl").
 
 -define(R_SUCCESS, "ok").
 -define(R_ERROR, "err").

@@ -16,7 +16,7 @@
     url_encode/1
 ]).
 
--include("provider_com.hrl").
+-include("provider_rec.hrl").
 
 -define(HTTP_OK, 200).
 

@@ -15,7 +15,7 @@
     code_change/3
 ]).
 
--include("socket_com.hrl").
+-include("socket_rec.hrl").
 
 -define(MANAGER, socket_receiver_event).
 

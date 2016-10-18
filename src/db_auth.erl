@@ -4,7 +4,7 @@
     login/3
 ]).
 
--include("db_com.hrl").
+-include("db_rec.hrl").
 
 login(#t_session{id = Id} = _) ->
     [Session] = db:select_session(#t_session{id = Id}),
