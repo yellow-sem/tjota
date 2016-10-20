@@ -11,41 +11,18 @@ start_link() -> supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 init([]) ->
     Flags = {one_for_one, 0, 1},
-    Children = [
-        {
-            socket_receiver_event,
-            {socket_receiver_event, start_link, []},
-            permanent,
-            infinity,
-            worker,
-            []
-        },
-
-        {
-            socket_acceptor,
-            {socket_acceptor, start_link, []},
-            permanent,
-            infinity,
-            worker,
-            [socket_acceptor]
-        },
-
-        {
-            socket_receiver_sup,
-            {socket_receiver_sup, start_link, []},
-            permanent,
-            infinity,
-            supervisor,
-            []
-        },
-
-        {
-            socket_handler_sup,
-            {socket_handler_sup, start_link, []},
-            permanent,
-            infinity,
-            supervisor,
-            []
-        }
-    ],
+    Children = [child(socket_receiver_event, [], worker),
+                child(socket_acceptor, [socket_acceptor], worker),
+                child(socket_receiver_sup, [], supervisor),
+                child(socket_handler_sup, [], supervisor)],
     {ok, {Flags, Children}}.
+
+
+child(Module, Modules, Type) ->
+    #{id => Module,
+      start => {Module, start_link, []},
+      restart => permanent,
+      shutdown => infinity,
+      type => Type,
+      modules => Modules}.
+
