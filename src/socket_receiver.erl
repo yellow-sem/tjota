@@ -67,10 +67,21 @@ handle_info({receiver, {payload, Payload}}, #s_client{} = Client) ->
     end,
 
     case Result of
-        stop -> {stop, normal, NewClient};
-        ok -> send(Client, Command, Id, ?R_SUCCESS), {noreply, NewClient};
-        err -> send(Client, Command, Id, ?R_ERROR), {noreply, NewClient};
-        {ok, Data} -> send(Client, Command, Id, Data), {noreply, NewClient}
+        stop ->
+            send(Client, Command, Id, ?R_SUCCESS),
+            {stop, normal, NewClient};
+
+        ok ->
+            send(Client, Command, Id, ?R_SUCCESS),
+            {noreply, NewClient};
+
+        err ->
+            send(Client, Command, Id, ?R_ERROR),
+            {noreply, NewClient};
+
+        {ok, Data} ->
+            send(Client, Command, Id, Data),
+            {noreply, NewClient}
     end;
 
 handle_info({receiver, {error, Reason}}, #s_client{} = Client) ->
