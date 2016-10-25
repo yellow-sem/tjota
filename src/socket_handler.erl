@@ -131,7 +131,7 @@ handle(#s_client{identity = Identity} = Client,
         send({identity, I}, ?C_ROOM_ANY, format(Room, User, in))
         || #t_user{id = I} <- db:select_room_user(Room)
     ],
-    {ok, Client};
+    {ok, Client, uuid:uuid_to_string(Room#t_room.id)};
 
 handle(#s_client{identity = Identity} = Client,
        ?C_ROOM_JOIN, [Id]) ->
