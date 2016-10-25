@@ -2,6 +2,8 @@
 
 -define(T_ROOM_PRIVATE, "private").
 -define(T_ROOM_PUBLIC, "public").
+-define(T_ROOM_DIRECT, "direct").
+-define(T_ROOM_BOT, "bot").
 
 -record(t_alias, {
     provider::string(),

@@ -111,13 +111,18 @@ handle(#s_client{} = Client,
        ?C_ROOM_DISCOVER, []) ->
     {ok, Client};
 
-handle(#s_client{identity = Identity} = Client,
+handle(#s_client{} = Client,
        ?C_ROOM_CREATE, [Name, Type]) ->
+    handle(Client, ?C_ROOM_CREATE, [Name, Type, none]);
+
+handle(#s_client{identity = Identity} = Client,
+       ?C_ROOM_CREATE, [Name, Type, Data]) ->
     [User] = db:select_user(#t_user{id = Identity}),
     Room = #t_room{
         id = uuid:get_v4(),
         name = Name,
-        type = Type
+        type = Type,
+        data = Data
     },
     {ok, _} = db:insert_room(Room),
     {ok, _} = db:sym_insert_user_room(User, Room, true),
@@ -170,7 +175,8 @@ handle(#s_client{identity = Identity} = Client,
 
 handle(#s_client{identity = Identity} = Client, ?C_MSG_SEND, [Id, Data]) ->
     User = #t_user{id = Identity},
-    Room = #t_room{id = uuid:string_to_uuid(Id)},
+    Room = db:select_room(#t_room{id = uuid:string_to_uuid(Id)}),
+    [_] = db:select_user_room(User, Room),
     Message = #t_message{
         room_id = Room#t_room.id,
         timestamp = now,
@@ -178,6 +184,7 @@ handle(#s_client{identity = Identity} = Client, ?C_MSG_SEND, [Id, Data]) ->
         user_id = User#t_user.id,
         data = Data
     },
+    % TODO: Dispatch to bot
     {ok, _} = db:insert_message(Message),
     [
         send({identity, I}, ?C_MSG_RECV, format(Message))
