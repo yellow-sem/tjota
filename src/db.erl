@@ -37,7 +37,7 @@
 ]).
 
 -include("cqerl.hrl").
--include("db_rec.hrl").
+-include("db.hrl").
 
 -define(KEYSPACE, "tjota").
 

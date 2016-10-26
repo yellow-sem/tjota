@@ -10,7 +10,7 @@
     receiver_loop/1
 ]).
 
--include("socket_rec.hrl").
+-include("socket.hrl").
 
 acceptor_start(Socket) when is_port(Socket) ->
     acceptor_start(#s_handler{socket = Socket, owner = self()});

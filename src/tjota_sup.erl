@@ -19,6 +19,14 @@ init([]) ->
             infinity,
             supervisor,
             []
+        },
+        {
+            bot_handler_sup,
+            {bot_handler_sup, start_link, []},
+            permanent,
+            infinity,
+            supervisor,
+            []
         }
     ],
     {ok, {Flags, Children}}.

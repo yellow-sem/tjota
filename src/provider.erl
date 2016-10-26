@@ -13,10 +13,13 @@
     link_extract/3
 ]).
 -export([
+    bot_handle/3
+]).
+-export([
     url_encode/1
 ]).
 
--include("provider_rec.hrl").
+-include("provider.hrl").
 
 -define(HTTP_OK, 200).
 
@@ -127,6 +130,10 @@ course_assignments(_Provider, _Token, _CourseId) -> not_implemented.
 link_extract("yellow", _Token, _Link) -> not_implemented;
 
 link_extract(_Provider, _Token, _Link) -> not_implemented.
+
+bot_handle("yellow", _Token, _Data) -> not_implemented;
+
+bot_handle(_Provider, _Token, _Data) -> not_implemented.
 
 url_encode({K, V}) ->
     io_lib:format("~s=~s", [edoc_lib:escape_uri(K),

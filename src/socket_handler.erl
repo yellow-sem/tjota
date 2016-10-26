@@ -12,30 +12,9 @@
     code_change/3
 ]).
 
--include("socket_rec.hrl").
--include("db_rec.hrl").
-
--define(C_SYS_EXIT, "sys:exit").
-
--define(C_AUTH_LOGIN, "auth:login").
--define(C_AUTH_LOGOUT, "auth:logout").
--define(C_AUTH_CHECK, "auth:check").
-
--define(C_ROOM_LIST, "room:list").
--define(C_ROOM_DISCOVER, "room:discover").
--define(C_ROOM_CREATE, "room:create").
--define(C_ROOM_JOIN, "room:join").
--define(C_ROOM_INVITE, "room:invite").
--define(C_ROOM_LEAVE, "room:leave").
-
--define(C_ROOM_SELF, "room:self").
--define(C_ROOM_ANY, "room:*").
-
--define(C_MSG_SEND, "msg:send").
--define(C_MSG_REQ, "msg:req").
--define(C_MSG_RECV, "msg:recv").
-
--define(C_LINK_EXTRACT, "link:extract").
+-include("socket.hrl").
+-include("db.hrl").
+-include("data.hrl").
 
 start_link() -> gen_server:start_link(?MODULE, default, []).
 
@@ -92,7 +71,7 @@ handle(#s_client{identity = Identity} = Client,
        ?C_ROOM_LIST, []) ->
     User = #t_user{id = Identity},
     [
-        send({identity, Identity}, ?C_ROOM_SELF, format(R))
+        send({identity, Identity}, ?C_ROOM_SELF, data:format(R))
         || R <- db:select_room(db:select_user_room(User))
     ],
     {ok, Client};
@@ -102,7 +81,7 @@ handle(#s_client{identity = Identity} = Client,
     Room = #t_room{id = uuid:string_to_uuid(Id)},
     [_] = db:select_user_room(#t_user{id = Identity}, Room),
     [
-        send({identity, Identity}, ?C_ROOM_ANY, format(Room, U, in))
+        send({identity, Identity}, ?C_ROOM_ANY, data:format(Room, U, in))
         || U <- db:select_user(db:select_room_user(Room))
     ],
     {ok, Client};
@@ -126,9 +105,9 @@ handle(#s_client{identity = Identity} = Client,
     },
     {ok, _} = db:insert_room(Room),
     {ok, _} = db:sym_insert_user_room(User, Room, true),
-    send({identity, Identity}, ?C_ROOM_SELF, format(Room)),
+    send({identity, Identity}, ?C_ROOM_SELF, data:format(Room)),
     [
-        send({identity, I}, ?C_ROOM_ANY, format(Room, User, in))
+        send({identity, I}, ?C_ROOM_ANY, data:format(Room, User, in))
         || #t_user{id = I} <- db:select_room_user(Room)
     ],
     {ok, Client, uuid:uuid_to_string(Room#t_room.id)};
@@ -139,9 +118,9 @@ handle(#s_client{identity = Identity} = Client,
     Room = #t_room{id = uuid:string_to_uuid(Id)},
     [#t_room{type = ?T_ROOM_PUBLIC}] = db:select_room(Room),
     {ok, _} = db:sym_insert_user_room(User, Room, true),
-    send({identity, Identity}, ?C_ROOM_SELF, format(Room)),
+    send({identity, Identity}, ?C_ROOM_SELF, data:format(Room)),
     [
-        send({identity, I}, ?C_ROOM_ANY, format(Room, User, in))
+        send({identity, I}, ?C_ROOM_ANY, data:format(Room, User, in))
         || #t_user{id = I} <- db:select_room_user(Room)
     ],
     {ok, Client};
@@ -155,9 +134,9 @@ handle(#s_client{identity = Identity} = Client,
                                                     username = Username}),
     [User] = db:select_user(#t_user{id = Alias#t_alias.user_id}),
     {ok, _} = db:sym_insert_user_room(User, Room, true),
-    send({identity, Alias#t_alias.user_id}, ?C_ROOM_SELF, format(Room)),
+    send({identity, Alias#t_alias.user_id}, ?C_ROOM_SELF, data:format(Room)),
     [
-        send({identity, I}, ?C_ROOM_ANY, format(Room, User, in))
+        send({identity, I}, ?C_ROOM_ANY, data:format(Room, User, in))
         || #t_user{id = I} <- db:select_room_user(Room)
     ],
     {ok, Client};
@@ -168,14 +147,14 @@ handle(#s_client{identity = Identity} = Client,
     Room = #t_room{id = uuid:string_to_uuid(Id)},
     {ok, _} = db:sym_update_user_room(User, Room, false),
     [
-        send({identity, I}, ?C_ROOM_ANY, format(Room, User, out))
+        send({identity, I}, ?C_ROOM_ANY, data:format(Room, User, out))
         || #t_user{id = I} <- db:select_room_user(Room)
     ],
     {ok, Client};
 
 handle(#s_client{identity = Identity} = Client, ?C_MSG_SEND, [Id, Data]) ->
     User = #t_user{id = Identity},
-    Room = db:select_room(#t_room{id = uuid:string_to_uuid(Id)}),
+    [Room] = db:select_room(#t_room{id = uuid:string_to_uuid(Id)}),
     [_] = db:select_user_room(User, Room),
     Message = #t_message{
         room_id = Room#t_room.id,
@@ -184,12 +163,17 @@ handle(#s_client{identity = Identity} = Client, ?C_MSG_SEND, [Id, Data]) ->
         user_id = User#t_user.id,
         data = Data
     },
-    % TODO: Dispatch to bot
     {ok, _} = db:insert_message(Message),
     [
-        send({identity, I}, ?C_MSG_RECV, format(Message))
+        send({identity, I}, ?C_MSG_RECV, data:format(Message))
         || #t_user{id = I} <- db:select_room_user(Room)
     ],
+    case Room of
+        #t_room{type = ?T_ROOM_BOT} ->
+            {ok, Process} = supervisor:start_child(bot_handler_sup, []),
+            (catch gen_server:call(Process, {dispatch, Room, Message}));
+        _ -> ok
+    end,
     {ok, Client};
 
 handle(#s_client{identity = Identity} = Client, ?C_MSG_REQ, [Id]) ->
@@ -197,7 +181,7 @@ handle(#s_client{identity = Identity} = Client, ?C_MSG_REQ, [Id]) ->
     Room = #t_room{id = uuid:string_to_uuid(Id)},
     [_] = db:select_user_room(User, Room),
     [
-        send({identity, Identity}, ?C_MSG_RECV, format(M))
+        send({identity, Identity}, ?C_MSG_RECV, data:format(M))
         || M <- db:select_message(#t_message{room_id = Room#t_room.id})
     ],
     {ok, Client};
@@ -206,37 +190,3 @@ handle(#s_client{} = Client, ?C_LINK_EXTRACT, [Link]) ->
     {ok, Client, Link}.
 
 send(To, Command, Data) -> socket_receiver_event:send(To, Command, Data).
-
-format(#t_user{} = User) ->
-    io_lib:format("~s ~s@~s", [
-        uuid:uuid_to_string(User#t_user.id),
-        User#t_user.username,
-        User#t_user.provider
-    ]);
-
-format(#t_room{} = Room) ->
-    io_lib:format("~s '~s' ~s", [
-        uuid:uuid_to_string(Room#t_room.id),
-        Room#t_room.name,
-        Room#t_room.type
-    ]);
-
-format(#t_message{} = Message) ->
-    io_lib:format("~s ~p ~s '~s'", [
-        uuid:uuid_to_string(Message#t_message.room_id),
-        Message#t_message.timestamp,
-        uuid:uuid_to_string(Message#t_message.user_id),
-        Message#t_message.data
-    ]).
-
-format(#t_room{} = Room, #t_user{} = User, in) ->
-    io_lib:format("~s << ~s", [
-        uuid:uuid_to_string(Room#t_room.id),
-        format(User)
-    ]);
-
-format(#t_room{} = Room, #t_user{} = User, out) ->
-    io_lib:format("~s >> ~s", [
-        uuid:uuid_to_string(Room#t_room.id),
-        format(User)
-    ]).
