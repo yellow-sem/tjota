@@ -22,3 +22,10 @@
     deadline::any(),
     status::string()
 }).
+
+-record(p_room, {
+    id::?ID,
+    name::string(),
+    type::course|project|other,
+    role::student|supervisor
+}).
