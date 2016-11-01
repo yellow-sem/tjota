@@ -23,7 +23,7 @@ init(#s_server{} = Server) ->
 
     Options = [
         binary,
-        {packet, raw},
+        {packet, line},
         {active, false},
         {ip, Address#s_address.host}
     ],

@@ -39,7 +39,7 @@ dispatch(#t_room{} = Room, #t_message{} = MessageIn) ->
     },
     {ok, _} = db:insert_message(MessageOut),
     [
-        send({identity, I}, ?C_MSG_RECV, data:format(MessageOut, bot))
+        send({identity, I}, ?C_MSG_RECV, data:format(MessageOut))
         || #t_user{id = I} <- db:select_room_user(Room)
     ],
     ok.
