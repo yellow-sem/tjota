@@ -187,6 +187,30 @@ handle(#s_client{identity = Identity} = Client, ?C_MSG_REQ, [Id]) ->
     {ok, Client};
 
 handle(#s_client{} = Client, ?C_LINK_EXTRACT, [Link]) ->
-    {ok, Client, Link}.
+    {ok, Client, Link};
+
+handle(#s_client{identity = Identity} = Client, ?C_STATUS_SET, [Status]) ->
+    [User] = db:select_user(#t_user{id = Identity}),
+    db:update_user(User#t_user{status = Status}),
+    [
+        send({identity, I}, ?C_STATUS_RECV, data:format(User, Status))
+        || I <- sets:to_list(sets:from_list(lists:concat([
+            [U#t_user.id || U <- db:select_room_user(R)]
+            || R <- db:select_user_room(User)
+        ])))
+    ],
+    {ok, Client};
+
+handle(#s_client{identity = Identity} = Client, ?C_STATUS_REQ, []) ->
+    [User] = db:select_user(#t_user{id = Identity}),
+    Status = User#t_user.status,
+    [
+        send({identity, I}, ?C_STATUS_RECV, data:format(User, Status))
+        || I <- sets:to_list(sets:from_list(lists:concat([
+            [U#t_user.id || U <- db:select_room_user(R)]
+            || R <- db:select_user_room(User)
+        ])))
+    ],
+    {ok, Client}.
 
 send(To, Command, Data) -> socket_receiver_event:send(To, Command, Data).

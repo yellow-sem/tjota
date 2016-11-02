@@ -20,3 +20,7 @@
 -define(C_MSG_RECV, "msg:recv").
 
 -define(C_LINK_EXTRACT, "link:extract").
+
+-define(C_STATUS_SET, "status:set").
+-define(C_STATUS_REQ, "status:req").
+-define(C_STATUS_RECV, "status:recv").

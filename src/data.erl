@@ -1,6 +1,7 @@
 -module(data).
 -export([
     format/1,
+    format/2,
     format/3
 ]).
 
@@ -32,6 +33,12 @@ format(#t_message{user_id = Identity} = Message) ->
         Message#t_message.timestamp,
         format(get_user(Identity)),
         Message#t_message.data
+    ]).
+
+format(#t_user{} = User, Status) ->
+    io_lib:format("~s '~s'", [
+        format(User),
+        Status
     ]).
 
 format(#t_room{} = Room, #t_user{} = User, in) ->
