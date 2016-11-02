@@ -10,7 +10,9 @@
     course_assignments/3
 ]).
 -export([
-    chat_link/3,
+    link_extract/3
+]).
+-export([
     chat_handle/3,
     chat_rooms/2
 ]).
@@ -126,9 +128,9 @@ course_assignments("yellow", Token, CourseId) ->
 
 course_assignments(_Provider, _Token, _CourseId) -> not_implemented.
 
-chat_link("yellow", _Token, _Link) -> not_implemented;
+link_extract("yellow", _Token, _Link) -> not_implemented;
 
-chat_link(_Provider, _Token, _Link) -> not_implemented.
+link_extract(_Provider, _Token, _Link) -> not_implemented.
 
 chat_handle("yellow", _Token, _Data) -> not_implemented;
 
