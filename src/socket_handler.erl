@@ -196,7 +196,8 @@ handle(#s_client{identity = Identity} = Client, ?C_STATUS_SET, [Status]) ->
         send({identity, I}, ?C_STATUS_RECV, data:format(User, Status))
         || I <- sets:to_list(sets:from_list(lists:concat([
             [U#t_user.id || U <- db:select_room_user(R)]
-            || R <- db:select_user_room(User)
+            || R <- db:select_room(db:select_user_room(User)),
+               R#t_room.type == ?T_ROOM_DIRECT
         ])))
     ],
     {ok, Client};
@@ -208,7 +209,8 @@ handle(#s_client{identity = Identity} = Client, ?C_STATUS_REQ, []) ->
         send({identity, I}, ?C_STATUS_RECV, data:format(User, Status))
         || I <- sets:to_list(sets:from_list(lists:concat([
             [U#t_user.id || U <- db:select_room_user(R)]
-            || R <- db:select_user_room(User)
+            || R <- db:select_room(db:select_user_room(User)),
+               R#t_room.type == ?T_ROOM_DIRECT
         ])))
     ],
     {ok, Client}.
