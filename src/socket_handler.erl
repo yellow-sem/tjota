@@ -148,6 +148,8 @@ handle(#s_client{identity = Identity} = Client,
     ],
     case Room of
         #t_room{type = ?T_ROOM_DIRECT} ->
+            Data = uuid:uuid_to_string(User#t_user.id),
+            db:update_room(Room#t_room{data = Data}),
             send({identity, Identity}, ?C_STATUS_RECV,
                  data:format(User, User#t_user.status));
         _ -> ok

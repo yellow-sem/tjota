@@ -21,10 +21,11 @@ format(system) ->
     ]);
 
 format(#t_room{} = Room) ->
-    io_lib:format("~s '~s' ~s", [
+    io_lib:format("~s '~s' ~s '~s'", [
         uuid:uuid_to_string(Room#t_room.id),
         Room#t_room.name,
-        Room#t_room.type
+        Room#t_room.type,
+        Room#t_room.data
     ]);
 
 format(#t_message{user_id = Identity} = Message) ->
