@@ -110,6 +110,13 @@ handle(#s_client{identity = Identity} = Client,
         send({identity, I}, ?C_ROOM_ANY, data:format(Room, User, in))
         || #t_user{id = I} <- db:select_room_user(Room)
     ],
+    case {Type, Data} of
+        {?T_ROOM_DIRECT, none} -> ok;
+        {?T_ROOM_DIRECT, Credential} ->
+            (catch handle(Client, ?C_ROOM_INVITE,
+                          [uuid:uuid_to_string(Room#t_room.id), Credential]));
+        {_, _} -> ok
+    end,
     {ok, Client, uuid:uuid_to_string(Room#t_room.id)};
 
 handle(#s_client{identity = Identity} = Client,
@@ -127,11 +134,11 @@ handle(#s_client{identity = Identity} = Client,
 
 handle(#s_client{identity = Identity} = Client,
        ?C_ROOM_INVITE, [Id, Credential]) ->
-    Room = #t_room{id = uuid:string_to_uuid(Id)},
+    [Room] = db:select_room(#t_room{id = uuid:string_to_uuid(Id)}),
     [_] = db:select_user_room(#t_user{id = Identity}, Room),
     [Username, Provider] = string:tokens(Credential, "@"),
-    [#t_alias{} = Alias] = db:select_alias(#t_alias{provider = Provider,
-                                                    username = Username}),
+    [Alias] = db:select_alias(#t_alias{provider = Provider,
+                                       username = Username}),
     [User] = db:select_user(#t_user{id = Alias#t_alias.user_id}),
     {ok, _} = db:sym_insert_user_room(User, Room, true),
     send({identity, Alias#t_alias.user_id}, ?C_ROOM_SELF, data:format(Room)),
@@ -139,6 +146,12 @@ handle(#s_client{identity = Identity} = Client,
         send({identity, I}, ?C_ROOM_ANY, data:format(Room, User, in))
         || #t_user{id = I} <- db:select_room_user(Room)
     ],
+    case Room of
+        #t_room{type = ?T_ROOM_DIRECT} ->
+            send({identity, Identity}, ?C_STATUS_RECV,
+                 data:format(User, User#t_user.status));
+        _ -> ok
+    end,
     {ok, Client};
 
 handle(#s_client{identity = Identity} = Client,
