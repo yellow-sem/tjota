@@ -19,10 +19,11 @@ start_link() -> gen_server:start_link(?MODULE, default, []).
 
 init(default) -> {ok, new}.
 
-handle_call({dispatch, User, Room, Message}, _From, new) ->
-    {stop, normal, dispatch(User, Room, Message), done}.
+handle_call(_Request, _From, State) -> {reply, ok, State}.
 
-handle_cast(_Request, State) -> {noreply, State}.
+handle_cast({dispatch, User, Room, Message}, new) ->
+    dispatch(User, Room, Message),
+    {noreply, done}.
 
 handle_info(_Info, State) -> {noreply, State}.
 
