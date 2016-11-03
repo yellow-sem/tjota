@@ -10,7 +10,10 @@
     course_assignments/3
 ]).
 -export([
-    link_extract/3
+    grades/2
+]).
+-export([
+    extract/3
 ]).
 -export([
     chat_handle/3,
@@ -24,9 +27,17 @@
 
 -define(HTTP_OK, 200).
 
-identity_login("yellow", Username, Password) ->
+base("yellow") -> "https://api.tjota.online";
+base(Domain) -> io_lib:format("https://~s", [Domain]).
+
+identity_login(Provider, Username, Password) ->
+    Url = iolist_to_string(io_lib:format(
+        "~s/api/v1/identity/login/",
+        [base(Provider)]
+    )),
+
     {ok, {{_, ?HTTP_OK, _}, _, Body}} = httpc:request(post, {
-        "https://api.tjota.online/api/v1/identity/login/", [],
+        Url, [],
         "application/x-www-form-urlencoded",
         url_encode([{"username", Username}, {"password", Password}])
     }, [], []),
@@ -34,13 +45,16 @@ identity_login("yellow", Username, Password) ->
     {Data} = jiffy:decode(Body),
 
     {lookup(Data, <<"success">>),
-     lookup(Data, <<"token">>)};
+     lookup(Data, <<"token">>)}.
 
-identity_login(_Provider, _Username, _Password) -> not_implemented.
+identity_logout(Provider, Token) ->
+    Url = iolist_to_string(io_lib:format(
+        "~s/api/v1/identity/logout/",
+        [base(Provider)]
+    )),
 
-identity_logout("yellow", Token) ->
     {ok, {_, _, Body}} = httpc:request(post, {
-        "https://api.tjota.online/api/v1/identity/logout/",
+        Url,
         [{"Authorization", io_lib:format("Token ~s", [Token])}],
         "application/x-www-form-urlencoded",
         url_encode([])
@@ -48,13 +62,16 @@ identity_logout("yellow", Token) ->
 
     {Data} = jiffy:decode(Body),
 
-    lookup(Data, <<"success">>);
+    lookup(Data, <<"success">>).
 
-identity_logout(_Provider, _Token) -> not_implemented.
+courses(Provider, Token) ->
+    Url = iolist_to_string(io_lib:format(
+        "~s/api/v1/courses/",
+        [base(Provider)]
+    )),
 
-courses("yellow", Token) ->
     {ok, {{_, ?HTTP_OK, _}, _, Body}} = httpc:request(get, {
-        "https://api.tjota.online/api/v1/gul/courses/",
+        Url,
         [{"Authorization", io_lib:format("Token ~s", [Token])}]
     }, [], []),
 
@@ -64,15 +81,13 @@ courses("yellow", Token) ->
         category = decode(lookup(Data, <<"category">>)),
         active = lookup(Data, <<"active">>),
         url = decode(lookup(Data, <<"url">>))
-    } || {Data} <- jiffy:decode(Body)]};
+    } || {Data} <- jiffy:decode(Body)]}.
 
-courses(_Provider, _Token) -> not_implemented.
-
-course_students("yellow", Token, CourseId) ->
-    Url = io_lib:format(
-        "https://api.tjota.online/api/v1/gul/courses/~p/students/",
-        [CourseId]
-    ),
+course_students(Provider, Token, CourseId) ->
+    Url = iolist_to_string(io_lib:format(
+        "~s/api/v1/courses/~p/students/",
+        [base(Provider), CourseId]
+    )),
 
     {ok, {{_, ?HTTP_OK, _}, _, Body}} = httpc:request(get, {
         Url,
@@ -83,15 +98,13 @@ course_students("yellow", Token, CourseId) ->
         type = student,
         name = decode(lookup(Data, <<"name">>)),
         alias = decode(lookup(Data, <<"alias">>))
-    } || {Data} <- jiffy:decode(Body)]};
+    } || {Data} <- jiffy:decode(Body)]}.
 
-course_students(_Provider, _Token, _CourseId) -> not_implemented.
-
-course_supervisors("yellow", Token, CourseId) ->
-    Url = io_lib:format(
-        "https://api.tjota.online/api/v1/gul/courses/~p/supervisors/",
-        [CourseId]
-    ),
+course_supervisors(Provider, Token, CourseId) ->
+    Url = iolist_to_string(io_lib:format(
+        "~s/api/v1/courses/~p/supervisors/",
+        [base(Provider), CourseId]
+    )),
 
     {ok, {{_, ?HTTP_OK, _}, _, Body}} = httpc:request(get, {
         Url,
@@ -102,15 +115,13 @@ course_supervisors("yellow", Token, CourseId) ->
         type = supervisor,
         name = decode(lookup(Data, <<"name">>)),
         alias = decode(lookup(Data, <<"alias">>))
-    } || {Data} <- jiffy:decode(Body)]};
+    } || {Data} <- jiffy:decode(Body)]}.
 
-course_supervisors(_Provider, _Token, _CourseId) -> not_implemented.
-
-course_assignments("yellow", Token, CourseId) ->
-    Url = io_lib:format(
-        "https://api.tjota.online/api/v1/gul/courses/~p/assignments/",
-        [CourseId]
-    ),
+course_assignments(Provider, Token, CourseId) ->
+    Url = iolist_to_string(io_lib:format(
+        "~s/api/v1/courses/~p/assignments/",
+        [base(Provider), CourseId]
+    )),
 
     {ok, {{_, ?HTTP_OK, _}, _, Body}} = httpc:request(get, {
         Url,
@@ -124,21 +135,46 @@ course_assignments("yellow", Token, CourseId) ->
         url = decode(lookup(Data, <<"url">>)),
         deadline = decode(lookup(Data, <<"deadline">>)),
         status = decode(lookup(Data, <<"status">>))
-    } || {Data} <- jiffy:decode(Body)]};
+    } || {Data} <- jiffy:decode(Body)]}.
 
-course_assignments(_Provider, _Token, _CourseId) -> not_implemented.
+grades(_Provider, _Token) -> not_implemented.
 
-link_extract("yellow", _Token, _Link) -> not_implemented;
+extract(_Provider, _Token, _Url) -> not_implemented.
 
-link_extract(_Provider, _Token, _Link) -> not_implemented.
+chat_handle(Provider, Token, Text) ->
+    Url = iolist_to_string(io_lib:format(
+        "~s/api/v1/chat/handle/",
+        [base(Provider)]
+    )),
 
-chat_handle("yellow", _Token, _Data) -> not_implemented;
+    {ok, {{_, ?HTTP_OK, _}, _, Body}} = httpc:request(post, {
+        Url,
+        [{"Authorization", io_lib:format("Token ~s", [Token])}],
+        "application/x-www-form-urlencoded",
+        url_encode([{"text", Text}])
+    }, [], []),
 
-chat_handle(_Provider, _Token, _Data) -> not_implemented.
+    {Data} = jiffy:decode(Body),
 
-chat_rooms("yellow", _Token) -> not_implemented;
+    {true, decode(lookup(Data, <<"text">>))}.
 
-chat_rooms(_Provider, _Token) -> not_implemented.
+chat_rooms(Provider, Token) ->
+    Url = iolist_to_string(io_lib:format(
+        "~s/api/v1/chat/rooms/",
+        [base(Provider)]
+    )),
+
+    {ok, {{_, ?HTTP_OK, _}, _, Body}} = httpc:request(get, {
+        Url,
+        [{"Authorization", io_lib:format("Token ~s", [Token])}]
+    }, [], []),
+
+    {true, [#p_room{
+        id = decode(lookup(Data, <<"id">>)),
+        name = decode(lookup(Data, <<"name">>)),
+        type = decode(lookup(Data, <<"type">>)),
+        role = decode(lookup(Data, <<"role">>))
+    } || {Data} <- jiffy:decode(Body)]}.
 
 url_encode({K, V}) ->
     io_lib:format("~s=~s", [edoc_lib:escape_uri(K),
@@ -152,6 +188,9 @@ url_encode([{K, V}|T], O) -> url_encode(T, O ++ "&" ++ url_encode({K, V})).
 
 decode(Value) when is_binary(Value) -> unicode:characters_to_list(Value);
 decode(Value) -> Value.
+
+iolist_to_string(Value) ->
+    erlang:binary_to_list(erlang:iolist_to_binary(Value)).
 
 lookup(Data, Key) ->
     case proplists:lookup(Key, Data) of

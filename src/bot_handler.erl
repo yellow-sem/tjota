@@ -19,8 +19,8 @@ start_link() -> gen_server:start_link(?MODULE, default, []).
 
 init(default) -> {ok, new}.
 
-handle_call({dispatch, Room, Message}, _From, new) ->
-    {stop, normal, dispatch(Room, Message), done}.
+handle_call({dispatch, User, Room, Message}, _From, new) ->
+    {stop, normal, dispatch(User, Room, Message), done}.
 
 handle_cast(_Request, State) -> {noreply, State}.
 
@@ -30,12 +30,15 @@ terminate(_Reason, _State) -> ok.
 
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
-dispatch(#t_room{} = Room, #t_message{} = MessageIn) ->
+dispatch(#t_user{} = User, #t_room{} = Room,
+         #t_message{data = DataIn} = _MessageIn) ->
+    [Protocol, Address] = string:tokens(Room#t_room.data, "://"),
+    {ok, DataOut} = request(User, Protocol, Address, DataIn),
     MessageOut = #t_message{
         room_id = Room#t_room.id,
         timestamp = now,
         id = uuid:get_v4(),
-        data = MessageIn#t_message.data
+        data = DataOut
     },
     {ok, _} = db:insert_message(MessageOut),
     [
@@ -43,5 +46,13 @@ dispatch(#t_room{} = Room, #t_message{} = MessageIn) ->
         || #t_user{id = I} <- db:select_room_user(Room)
     ],
     ok.
+
+request(#t_user{id = Identity} = _User, "provider", Provider, DataIn) ->
+    [#t_token{token = Token}] = db:select_token(#t_token{user_id = Identity,
+                                                         provider = Provider}),
+    {true, DataOut} = provider:chat_handle(Provider, Token, DataIn),
+    {ok, DataOut};
+
+request(_User, _Protocol, _Address, _DataIn) -> not_implemented.
 
 send(To, Command, Data) -> socket_receiver_event:send(To, Command, Data).

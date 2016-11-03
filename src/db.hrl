@@ -1,10 +1,5 @@
 -define(ID, any()).
 
--define(T_ROOM_PRIVATE, "private").
--define(T_ROOM_PUBLIC, "public").
--define(T_ROOM_DIRECT, "direct").
--define(T_ROOM_BOT, "bot").
-
 -record(t_alias, {
     provider::string(),
     username::string(),
@@ -25,6 +20,17 @@
     provider::string(),
     token::any()
 }).
+
+-record(t_token, {
+    user_id::?ID,
+    provider::string(),
+    token::any()
+}).
+
+-define(T_ROOM_PRIVATE, "private").
+-define(T_ROOM_PUBLIC, "public").
+-define(T_ROOM_DIRECT, "direct").
+-define(T_ROOM_BOT, "bot").
 
 -record(t_room, {
     id::?ID,

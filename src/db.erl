@@ -17,6 +17,10 @@
     select_session/1
 ]).
 -export([
+    insert_token/1,
+    select_token/1
+]).
+-export([
     insert_room/1,
     update_room/1,
     select_room/1
@@ -44,6 +48,7 @@
 -define(TABLE_USER, "user").
 -define(TABLE_ALIAS, "alias").
 -define(TABLE_SESSION, "session").
+-define(TABLE_TOKEN, "\"token\"").
 -define(TABLE_ROOM, "room").
 -define(TABLE_MESSAGE, "message").
 
@@ -56,6 +61,7 @@ bootstrap() ->
         user,
         alias,
         session,
+        token,
         room,
         message
     ]),
@@ -117,6 +123,17 @@ create_table(session) ->
             PRIMARY KEY (id)
         )
     ", [?KEYSPACE, ?TABLE_SESSION]));
+
+create_table(token) ->
+    {ok, Client} = get_cqerl_client(),
+    {ok, _} = cqerl:run_query(Client, io_lib:format("
+        CREATE TABLE IF NOT EXISTS ~s.~s (
+            user_id UUID,
+            provider TEXT,
+            \"token\" TEXT,
+            PRIMARY KEY ((user_id, provider))
+        )
+    ", [?KEYSPACE, ?TABLE_TOKEN]));
 
 create_table(room) ->
     {ok, Client} = get_cqerl_client(),
@@ -315,6 +332,45 @@ map_session(Row) ->
         token = proplists:get_value(token, Row)
     }.
 
+%%%%%%%%%
+% token %
+%%%%%%%%%
+
+insert_token(#t_token{} = Token) ->
+    {ok, Client} = get_cqerl_client(),
+    {ok, _} = cqerl:run_query(Client, #cql_query{
+        statement = io_lib:format("
+            INSERT INTO ~s.~s (user_id, provider, \"token\")
+            VALUES (?, ?, ?)
+        ", [?KEYSPACE, ?TABLE_TOKEN]),
+        values = [
+            {user_id, Token#t_token.user_id},
+            {provider, Token#t_token.provider},
+            {token, Token#t_token.token}
+        ]
+    }).
+
+select_token(#t_token{} = Token) ->
+    {ok, Client} = get_cqerl_client(),
+    {ok, Result} = cqerl:run_query(Client, #cql_query{
+        statement = io_lib:format("
+            SELECT * FROM ~s.~s
+            WHERE user_id = ? AND provider = ?
+        ", [?KEYSPACE, ?TABLE_TOKEN]),
+        values = [
+            {user_id, Token#t_token.user_id},
+            {provider, Token#t_token.provider}
+        ]
+    }),
+    lists:map(fun map_token/1, cqerl:all_rows(Result)).
+
+map_token(Row) ->
+    #t_token{
+        user_id = proplists:get_value(user_id, Row),
+        provider = decode(proplists:get_value(provider, Row)),
+        token = proplists:get_value(token, Row)
+    }.
+
 %%%%%%%%
 % room %
 %%%%%%%%
@@ -381,7 +437,7 @@ map_room(Row) ->
         id = proplists:get_value(id, Row),
         name = decode(proplists:get_value(name, Row)),
         type = decode(proplists:get_value(type, Row)),
-        data = proplists:get_value(data, Row)
+        data = decode(proplists:get_value(data, Row))
     }.
 
 %%%%%%%%%%%

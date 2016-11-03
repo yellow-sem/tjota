@@ -186,7 +186,7 @@ handle(#s_client{identity = Identity} = Client, ?C_MSG_SEND, [Id, Data]) ->
     case Room of
         #t_room{type = ?T_ROOM_BOT} ->
             {ok, Process} = supervisor:start_child(bot_handler_sup, []),
-            (catch gen_server:call(Process, {dispatch, Room, Message}));
+            (catch gen_server:call(Process, {dispatch, User, Room, Message}));
         _ -> ok
     end,
     {ok, Client};

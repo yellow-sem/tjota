@@ -43,4 +43,7 @@ login(Provider, Username, Token) ->
     },
 
     {ok, _} = db:insert_session(Session),
+    {ok, _} = db:insert_token(#t_token{user_id = User#t_user.id,
+                                       provider = Provider,
+                                       token = Token}),
     {session, Session}.

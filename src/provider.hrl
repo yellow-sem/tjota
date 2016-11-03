@@ -23,9 +23,16 @@
     status::string()
 }).
 
+-define(P_ROOM_COURSE, "course").
+-define(P_ROOM_PROJECT, "project").
+-define(P_ROOM_OTHER, "other").
+
+-define(P_ROLE_STUDENT, "student").
+-define(P_ROLE_SUPERVISOR, "supervisor").
+
 -record(p_room, {
     id::?ID,
     name::string(),
-    type::course|project|other,
-    role::student|supervisor
+    type::string(),
+    role::string()
 }).
