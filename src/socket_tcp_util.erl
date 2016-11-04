@@ -1,4 +1,4 @@
--module(socket_util).
+-module(socket_tcp_util).
 
 -export([
     acceptor_start/1,

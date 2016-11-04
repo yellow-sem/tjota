@@ -1,4 +1,4 @@
--module(socket_receiver_tcp).
+-module(socket_tcp_receiver).
 -behaviour(gen_server).
 -export([
     start_link/0
@@ -32,7 +32,7 @@ handle_cast({socket, Socket}, #s_client{} = _Client) ->
     gen_tcp:send(Socket,
                  io_lib:format("start ~w ~n", [Host])),
 
-    socket_util:receiver_start(Socket),
+    socket_tcp_util:receiver_start(Socket),
 
     {noreply, #s_client{socket = Socket,
                         address = #s_address{host = Host, port = Port},

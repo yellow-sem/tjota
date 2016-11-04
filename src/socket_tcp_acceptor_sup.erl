@@ -1,4 +1,4 @@
--module(socket_receiver_tcp_sup).
+-module(socket_tcp_acceptor_sup).
 -behaviour(supervisor).
 -export([
     start_link/0
@@ -10,8 +10,9 @@
 start_link() -> supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 
 init([]) ->
-    Flags = {simple_one_for_one, 0, 1},
+    Flags = {one_for_one, 0, 1},
     Children = [
-        util:child(socket_receiver_tcp, worker, temporary)
+        util:child(socket_tcp_acceptor, worker),
+        util:child(socket_tcp_receiver_sup, supervisor)
     ],
     {ok, {Flags, Children}}.

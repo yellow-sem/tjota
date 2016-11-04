@@ -1,4 +1,4 @@
--module(socket_acceptor_tcp).
+-module(socket_tcp_acceptor).
 -behaviour(gen_server).
 -export([
     start_link/0
@@ -30,7 +30,7 @@ init(#s_server{} = Server) ->
 
     case gen_tcp:listen(Address#s_address.port, Options) of
         {ok, Socket} ->
-            socket_util:acceptor_start(Socket),
+            socket_tcp_util:acceptor_start(Socket),
 
             {ok, #s_server{socket = Socket,
                            address = Address,
@@ -44,7 +44,7 @@ handle_call(_Request, _From, #s_server{} = Server) -> {noreply, Server}.
 handle_cast(_Request, #s_server{} = Server) -> {noreply, Server}.
 
 handle_info({acceptor, {socket, Socket}}, #s_server{} = Server) ->
-    {ok, Process} = supervisor:start_child(socket_receiver_tcp_sup, []),
+    {ok, Process} = supervisor:start_child(socket_tcp_receiver_sup, []),
     gen_tcp:controlling_process(Socket, Process),
     gen_server:cast(Process, {socket, Socket}),
     {noreply, Server};

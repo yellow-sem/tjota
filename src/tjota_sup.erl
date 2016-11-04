@@ -15,6 +15,6 @@ init([]) ->
         util:child(bot_handler_sup, supervisor),
         util:child(socket_handler_sup, supervisor),
         util:child(socket_receiver_event, [], worker, permanent),
-        util:child(socket_acceptor_tcp_sup, supervisor)
+        util:child(socket_tcp_acceptor_sup, supervisor)
     ],
     {ok, {Flags, Children}}.
