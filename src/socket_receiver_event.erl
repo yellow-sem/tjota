@@ -4,7 +4,8 @@
     start_link/0
 ]).
 -export([
-    send/3
+    send/3,
+    subscribe/1
 ]).
 -export([
     init/1,
@@ -17,12 +18,20 @@
 
 -include("socket.hrl").
 
--define(MANAGER, socket_receiver_event).
+-define(MANAGER_REF, socket_receiver_event).
 
-start_link() -> gen_event:start_link({local, ?MANAGER}).
+start_link() -> gen_event:start_link({local, ?MANAGER_REF}).
 
 send(To, Command, Data) ->
-    gen_event:notify(?MANAGER, {send, To, Command, Data}).
+    gen_event:notify(?MANAGER_REF, {send, To, Command, Data}).
+
+subscribe(Client) ->
+    gen_event:delete_handler(?MANAGER_REF,
+                             {socket_receiver_event, self()},
+                             []),
+    gen_event:add_handler(?MANAGER_REF,
+                          {socket_receiver_event, self()},
+                          Client).
 
 init(#s_client{} = Client) -> {ok, Client}.
 

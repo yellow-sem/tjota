@@ -1,4 +1,4 @@
--module(socket_acceptor).
+-module(socket_acceptor_tcp).
 -behaviour(gen_server).
 -export([
     start_link/0
@@ -44,7 +44,7 @@ handle_call(_Request, _From, #s_server{} = Server) -> {noreply, Server}.
 handle_cast(_Request, #s_server{} = Server) -> {noreply, Server}.
 
 handle_info({acceptor, {socket, Socket}}, #s_server{} = Server) ->
-    {ok, Process} = supervisor:start_child(socket_receiver_sup, []),
+    {ok, Process} = supervisor:start_child(socket_receiver_tcp_sup, []),
     gen_tcp:controlling_process(Socket, Process),
     gen_server:cast(Process, {socket, Socket}),
     {noreply, Server};

@@ -12,13 +12,6 @@ start_link() -> supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 init([]) ->
     Flags = {simple_one_for_one, 0, 1},
     Children = [
-        {
-            socket_handler,
-            {socket_handler, start_link, []},
-            temporary,
-            infinity,
-            worker,
-            []
-        }
+        util:child(socket_handler, worker, temporary)
     ],
     {ok, {Flags, Children}}.

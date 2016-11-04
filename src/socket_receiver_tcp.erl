@@ -1,4 +1,4 @@
--module(socket_receiver).
+-module(socket_receiver_tcp).
 -behaviour(gen_server).
 -export([
     start_link/0
@@ -39,16 +39,8 @@ handle_cast({socket, Socket}, #s_client{} = _Client) ->
                         receiver = self()}}.
 
 handle_info({receiver, {payload, Payload}}, #s_client{} = Client) ->
-    Message = strip(binary_to_list(Payload)),
-    {match, Groups} = re:run(Message, "'([^']+)'|([^\s']+)",
-                             [{capture, all, list}, global]),
-    Tokens = [case Group of [_, _, Token] -> Token; [_, Token] -> Token end
-              || Group <- Groups],
-    case Tokens of
-        [Command, Id|Args] -> ok;
-        [Command|Args] -> Id = any;
-        _ -> Command = none, Id = any, Args = []
-    end,
+
+    {request, Command, Id, Args} = data:decode_request(Payload),
 
     {ok, Process} = supervisor:start_child(socket_handler_sup, []),
     ok = gen_server:call(Process, {client, Client}),
@@ -62,7 +54,9 @@ handle_info({receiver, {payload, Payload}}, #s_client{} = Client) ->
     end,
 
     if
-        Client =/= NewClient -> client_change(Client, NewClient);
+        Client#s_client.identity =/= NewClient#s_client.identity ->
+            socket_receiver_event:subscribe(NewClient);
+
         true -> ok
     end,
 
@@ -96,23 +90,6 @@ terminate(_Reason, #s_client{} = Client) ->
 
 code_change(_OldVsn, #s_client{} = Client, _Extra) -> {ok, Client}.
 
-client_change(#s_client{} = OldClient, #s_client{} = NewClient) ->
-
-    if OldClient#s_client.identity =/= NewClient#s_client.identity ->
-
-        gen_event:delete_handler(socket_receiver_event,
-                                 {socket_receiver_event, self()},
-                                 []),
-
-        gen_event:add_handler(socket_receiver_event,
-                              {socket_receiver_event, self()},
-                              NewClient)
-
-    end.
-
 send(#s_client{} = Client, Command, Id, Data) ->
     gen_tcp:send(Client#s_client.socket,
-                 io_lib:format("~s ~s ~s~n", [Command, Id, Data])).
-
-strip(Content) ->
-    re:replace(Content, "(^\\s+)|(\\s+$)", "", [global, {return, list}]).
+                 data:encode_response({response, Command, Id, Data})).
