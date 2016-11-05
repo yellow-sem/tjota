@@ -18,7 +18,7 @@
 }).
 
 -record(s_client, {
-    socket::port(),
+    socket::any(),
     address = #s_address{},
     receiver::pid(),
     identity::any()

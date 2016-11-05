@@ -20,10 +20,11 @@ start_link() -> gen_server:start_link(?MODULE, default, []).
 
 init(default) -> {ok, new}.
 
-handle_call({client, Client}, _From, new) -> {reply, ok, Client};
+handle_call({identity, Identity}, _From, new) ->
+    {reply, ok, {identity, Identity}};
 
-handle_call({handle, Command, Args}, _From, #s_client{} = Client) ->
-    {stop, normal, handle(Client, Command, Args), done}.
+handle_call({handle, Command, Args}, _From, {identity, Identity}) ->
+    {stop, normal, handle(Identity, Command, Args), done}.
 
 handle_cast(_Request, Client) -> {noreply, Client}.
 
@@ -33,69 +34,65 @@ terminate(_Reason, _Client) -> ok.
 
 code_change(_OldVsn, #s_client{} = Client, _Extra) -> {ok, Client}.
 
-handle(#s_client{} = Client, ?C_SYS_EXIT, []) ->
-    {ok, Client, stop};
+handle(Identity, ?C_SYS_EXIT, []) ->
+    {ok, Identity, stop};
 
-handle(#s_client{} = Client, ?C_AUTH_LOGIN, [Id]) ->
+handle(_Identity, ?C_AUTH_LOGIN, [Id]) ->
     {session, Session} = db_auth:login(#t_session{id = Id}),
     {
-        ok, Client#s_client{identity = Session#t_session.user_id},
+        ok, Session#t_session.user_id,
         uuid:uuid_to_string(Session#t_session.id)
     };
 
-handle(#s_client{} = Client, ?C_AUTH_LOGIN, [Credential, Password]) ->
+handle(_Identity, ?C_AUTH_LOGIN, [Credential, Password]) ->
     [Username, Provider] = string:tokens(Credential, "@"),
     {true, Token} = provider:identity_login(Provider, Username, Password),
     {session, Session} = db_auth:login(Provider, Username, Token),
     {
-        ok, Client#s_client{identity = Session#t_session.user_id},
+        ok, Session#t_session.user_id,
         uuid:uuid_to_string(Session#t_session.id)
     };
 
-handle(#s_client{identity = undefined}, _Command, _Args) -> unauthorized;
+handle(undefined, _Command, _Args) -> unauthorized;
 
-handle(#s_client{} = Client, ?C_AUTH_LOGOUT, [Id]) ->
+handle(Identity, ?C_AUTH_LOGOUT, [Id]) ->
     [Session] = db:select_session(#t_session{id = Id}),
+    Identity = Session#t_session.user_id,
     db:delete_session(Session),
     true = provider:identity_logout(Session#t_session.provider,
                                     Session#t_session.token),
-    {ok, Client#s_client{identity = undefined}};
+    {ok, undefined};
 
-handle(#s_client{} = Client, ?C_AUTH_CHECK, [Credential]) ->
+handle(Identity, ?C_AUTH_CHECK, [Credential]) ->
     [Username, Provider] = string:tokens(Credential, "@"),
     [#t_alias{}] = db:select_alias(#t_alias{provider = Provider,
                                             username = Username}),
-    {ok, Client};
+    {ok, Identity};
 
-handle(#s_client{identity = Identity} = Client,
-       ?C_ROOM_LIST, []) ->
+handle(Identity, ?C_ROOM_LIST, []) ->
     User = #t_user{id = Identity},
     [
         send({identity, Identity}, ?C_ROOM_SELF, data:format(R))
         || R <- db:select_room(db:select_user_room(User))
     ],
-    {ok, Client};
+    {ok, Identity};
 
-handle(#s_client{identity = Identity} = Client,
-       ?C_ROOM_LIST, [Id]) ->
+handle(Identity, ?C_ROOM_LIST, [Id]) ->
     Room = #t_room{id = uuid:string_to_uuid(Id)},
     [_] = db:select_user_room(#t_user{id = Identity}, Room),
     [
         send({identity, Identity}, ?C_ROOM_ANY, data:format(Room, U, in))
         || U <- db:select_user(db:select_room_user(Room))
     ],
-    {ok, Client};
+    {ok, Identity};
 
-handle(#s_client{} = Client,
-       ?C_ROOM_DISCOVER, []) ->
-    {ok, Client};
+handle(Identity, ?C_ROOM_DISCOVER, []) ->
+    {ok, Identity};
 
-handle(#s_client{} = Client,
-       ?C_ROOM_CREATE, [Name, Type]) ->
-    handle(Client, ?C_ROOM_CREATE, [Name, Type, none]);
+handle(Identity, ?C_ROOM_CREATE, [Name, Type]) ->
+    handle(Identity, ?C_ROOM_CREATE, [Name, Type, none]);
 
-handle(#s_client{identity = Identity} = Client,
-       ?C_ROOM_CREATE, [Name, Type, Data]) ->
+handle(Identity, ?C_ROOM_CREATE, [Name, Type, Data]) ->
     [User] = db:select_user(#t_user{id = Identity}),
     Room = #t_room{
         id = uuid:get_v4(),
@@ -113,14 +110,13 @@ handle(#s_client{identity = Identity} = Client,
     case {Type, Data} of
         {?T_ROOM_DIRECT, none} -> ok;
         {?T_ROOM_DIRECT, Credential} ->
-            (catch handle(Client, ?C_ROOM_INVITE,
+            (catch handle(Identity, ?C_ROOM_INVITE,
                           [uuid:uuid_to_string(Room#t_room.id), Credential]));
         {_, _} -> ok
     end,
-    {ok, Client, uuid:uuid_to_string(Room#t_room.id)};
+    {ok, Identity, uuid:uuid_to_string(Room#t_room.id)};
 
-handle(#s_client{identity = Identity} = Client,
-       ?C_ROOM_JOIN, [Id]) ->
+handle(Identity, ?C_ROOM_JOIN, [Id]) ->
     [User] = db:select_user(#t_user{id = Identity}),
     Room = #t_room{id = uuid:string_to_uuid(Id)},
     [#t_room{type = ?T_ROOM_PUBLIC}] = db:select_room(Room),
@@ -130,10 +126,9 @@ handle(#s_client{identity = Identity} = Client,
         send({identity, I}, ?C_ROOM_ANY, data:format(Room, User, in))
         || #t_user{id = I} <- db:select_room_user(Room)
     ],
-    {ok, Client};
+    {ok, Identity};
 
-handle(#s_client{identity = Identity} = Client,
-       ?C_ROOM_INVITE, [Id, Credential]) ->
+handle(Identity, ?C_ROOM_INVITE, [Id, Credential]) ->
     [Room] = db:select_room(#t_room{id = uuid:string_to_uuid(Id)}),
     [_] = db:select_user_room(#t_user{id = Identity}, Room),
     [Username, Provider] = string:tokens(Credential, "@"),
@@ -154,10 +149,9 @@ handle(#s_client{identity = Identity} = Client,
                  data:format(User, User#t_user.status));
         _ -> ok
     end,
-    {ok, Client};
+    {ok, Identity};
 
-handle(#s_client{identity = Identity} = Client,
-       ?C_ROOM_LEAVE, [Id]) ->
+handle(Identity, ?C_ROOM_LEAVE, [Id]) ->
     [User] = db:select_user(#t_user{id = Identity}),
     Room = #t_room{id = uuid:string_to_uuid(Id)},
     {ok, _} = db:sym_update_user_room(User, Room, false),
@@ -165,9 +159,9 @@ handle(#s_client{identity = Identity} = Client,
         send({identity, I}, ?C_ROOM_ANY, data:format(Room, User, out))
         || #t_user{id = I} <- db:select_room_user(Room)
     ],
-    {ok, Client};
+    {ok, Identity};
 
-handle(#s_client{identity = Identity} = Client, ?C_MSG_SEND, [Id, Data]) ->
+handle(Identity, ?C_MSG_SEND, [Id, Data]) ->
     User = #t_user{id = Identity},
     [Room] = db:select_room(#t_room{id = uuid:string_to_uuid(Id)}),
     [_] = db:select_user_room(User, Room),
@@ -189,9 +183,9 @@ handle(#s_client{identity = Identity} = Client, ?C_MSG_SEND, [Id, Data]) ->
             (catch gen_server:cast(Process, {dispatch, User, Room, Message}));
         _ -> ok
     end,
-    {ok, Client};
+    {ok, Identity};
 
-handle(#s_client{identity = Identity} = Client, ?C_MSG_REQ, [Id]) ->
+handle(Identity, ?C_MSG_REQ, [Id]) ->
     User = #t_user{id = Identity},
     Room = #t_room{id = uuid:string_to_uuid(Id)},
     [_] = db:select_user_room(User, Room),
@@ -199,12 +193,12 @@ handle(#s_client{identity = Identity} = Client, ?C_MSG_REQ, [Id]) ->
         send({identity, Identity}, ?C_MSG_RECV, data:format(M))
         || M <- db:select_message(#t_message{room_id = Room#t_room.id})
     ],
-    {ok, Client};
+    {ok, Identity};
 
-handle(#s_client{} = Client, ?C_LINK_EXTRACT, [Link]) ->
-    {ok, Client, Link};
+handle(Identity, ?C_LINK_EXTRACT, [Link]) ->
+    {ok, Identity, Link};
 
-handle(#s_client{identity = Identity} = Client, ?C_STATUS_SET, [Status]) ->
+handle(Identity, ?C_STATUS_SET, [Status]) ->
     [User] = db:select_user(#t_user{id = Identity}),
     db:update_user(User#t_user{status = Status}),
     [
@@ -215,9 +209,9 @@ handle(#s_client{identity = Identity} = Client, ?C_STATUS_SET, [Status]) ->
                R#t_room.type == ?T_ROOM_DIRECT
         ])))
     ],
-    {ok, Client};
+    {ok, Identity};
 
-handle(#s_client{identity = Identity} = Client, ?C_STATUS_REQ, []) ->
+handle(Identity, ?C_STATUS_REQ, []) ->
     [User] = db:select_user(#t_user{id = Identity}),
     Status = User#t_user.status,
     [
@@ -228,6 +222,6 @@ handle(#s_client{identity = Identity} = Client, ?C_STATUS_REQ, []) ->
                R#t_room.type == ?T_ROOM_DIRECT
         ])))
     ],
-    {ok, Client}.
+    {ok, Identity}.
 
 send(To, Command, Data) -> socket_receiver_event:send(To, Command, Data).

@@ -13,9 +13,7 @@
 ]).
 
 -include("socket.hrl").
-
--define(R_SUCCESS, "ok").
--define(R_ERROR, "err").
+-include("data.hrl").
 
 start_link() -> gen_server:start_link(?MODULE, default, []).
 
@@ -43,15 +41,17 @@ handle_info({receiver, {payload, Payload}}, #s_client{} = Client) ->
     {request, Command, Id, Args} = data:decode_request(Payload),
 
     {ok, Process} = supervisor:start_child(socket_handler_sup, []),
-    ok = gen_server:call(Process, {client, Client}),
+    ok = gen_server:call(Process, {identity, Client#s_client.identity}),
     Handle = (catch gen_server:call(Process, {handle, Command, Args})),
 
     Result = case Handle of
-        {ok, NewClient, stop} -> stop;
-        {ok, NewClient} -> ok;
-        {ok, NewClient, Other} -> {ok, Other};
-        _ -> NewClient = Client, err
+        {ok, NewIdentity, stop} -> stop;
+        {ok, NewIdentity} -> ok;
+        {ok, NewIdentity, Other} -> {ok, Other};
+        _ -> NewIdentity = Client#s_client.identity, err
     end,
+
+    NewClient = Client#s_client{identity = NewIdentity},
 
     if
         Client#s_client.identity =/= NewClient#s_client.identity ->
@@ -86,6 +86,7 @@ handle_info({send, {Command, Data}}, #s_client{} = Client) ->
     {noreply, Client}.
 
 terminate(_Reason, #s_client{} = Client) ->
+    socket_receiver_event:unsubscribe(Client),
     gen_tcp:close(Client#s_client.socket).
 
 code_change(_OldVsn, #s_client{} = Client, _Extra) -> {ok, Client}.
