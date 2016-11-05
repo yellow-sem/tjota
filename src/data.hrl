@@ -14,6 +14,7 @@
 
 -define(C_ROOM_SELF, "room:self").
 -define(C_ROOM_ANY, "room:*").
+-define(C_ROOM_EXIT, "room:exit").
 
 -define(C_MSG_SEND, "msg:send").
 -define(C_MSG_REQ, "msg:req").
@@ -27,3 +28,6 @@
 
 -define(R_SUCCESS, "ok").
 -define(R_ERROR, "err").
+
+-define(MC_ROOM_LEAVE, "leave").
+-define(MC_ROOM_INVITE, "invite").

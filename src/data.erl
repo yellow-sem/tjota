@@ -1,7 +1,7 @@
 -module(data).
 -export([
-    decode_request/1,
-    encode_response/1
+    request_parse/1,
+    response_format/1
 ]).
 -export([
     format/1,
@@ -11,10 +11,10 @@
 
 -include("db.hrl").
 
-decode_request(Payload) when is_binary(Payload) ->
-    decode_request(binary_to_list(Payload));
+request_parse(Payload) when is_binary(Payload) ->
+    request_parse(binary_to_list(Payload));
 
-decode_request(Payload) ->
+request_parse(Payload) ->
     Message = strip(Payload),
     {match, Groups} = re:run(Message, "'([^']+)'|([^\s']+)",
                              [{capture, all, list}, global]),
@@ -28,7 +28,7 @@ decode_request(Payload) ->
 
     {request, Command, Id, Args}.
 
-encode_response({response, Command, Id, Data}) ->
+response_format({response, Command, Id, Data}) ->
     io_lib:format("~s ~s ~s~n", [Command, Id, Data]).
 
 format(#t_user{} = User) ->

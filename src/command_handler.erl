@@ -109,8 +109,8 @@ handle(Identity, ?C_ROOM_CREATE, [Name, Type, Data]) ->
     case {Type, Data} of
         {?T_ROOM_DIRECT, none} -> ok;
         {?T_ROOM_DIRECT, Credential} ->
-            (catch handle(Identity, ?C_ROOM_INVITE,
-                          [uuid:uuid_to_string(Room#t_room.id), Credential]));
+            handle(Identity, ?C_ROOM_INVITE,
+                   [uuid:uuid_to_string(Room#t_room.id), Credential]);
         {_, _} -> ok
     end,
     {ok, Identity, uuid:uuid_to_string(Room#t_room.id)};
@@ -158,7 +158,8 @@ handle(Identity, ?C_ROOM_LEAVE, [Id]) ->
         send({identity, I}, ?C_ROOM_ANY, data:format(Room, User, out))
         || #t_user{id = I} <- db:select_room_user(Room)
     ],
-    {ok, Identity};
+    send({identity, Identity}, ?C_ROOM_EXIT, Id),
+    {ok, Identity, Id};
 
 handle(Identity, ?C_MSG_SEND, [Id, Data]) ->
     User = #t_user{id = Identity},
@@ -171,17 +172,7 @@ handle(Identity, ?C_MSG_SEND, [Id, Data]) ->
         user_id = User#t_user.id,
         data = Data
     },
-    {ok, _} = db:insert_message(Message),
-    [
-        send({identity, I}, ?C_MSG_RECV, data:format(Message))
-        || #t_user{id = I} <- db:select_room_user(Room)
-    ],
-    case Room of
-        #t_room{type = ?T_ROOM_BOT} ->
-            {ok, Process} = supervisor:start_child(bot_handler_sup, []),
-            (catch gen_server:cast(Process, {dispatch, User, Room, Message}));
-        _ -> ok
-    end,
+    handle_message(User, Room, Message),
     {ok, Identity};
 
 handle(Identity, ?C_MSG_REQ, [Id]) ->
@@ -222,5 +213,47 @@ handle(Identity, ?C_STATUS_REQ, []) ->
         ])))
     ],
     {ok, Identity}.
+
+broadcast_message(Room, Message) ->
+    [
+        send({identity, I}, ?C_MSG_RECV, data:format(Message))
+        || #t_user{id = I} <- db:select_room_user(Room)
+    ],
+    ok.
+
+handle_message(#t_user{} = User,
+               #t_room{} = Room,
+               #t_message{data = [$/ | Command]} = _Message) ->
+
+    handle_message_command(User, Room, string:tokens(Command, " "));
+
+handle_message(#t_user{} = User,
+               #t_room{type = ?T_ROOM_BOT} = Room,
+               #t_message{} = Message) ->
+
+    {ok, _} = db:insert_message(Message),
+    ok = broadcast_message(Room, Message),
+
+    {ok, Process} = supervisor:start_child(bot_handler_sup, []),
+    (catch gen_server:cast(Process, {dispatch, User, Room, Message}));
+
+handle_message(#t_user{} = _User,
+               #t_room{} = Room,
+               #t_message{} = Message) ->
+
+    {ok, _} = db:insert_message(Message),
+    ok = broadcast_message(Room, Message).
+
+handle_message_command(#t_user{} = User, #t_room{} = Room,
+                       [?MC_ROOM_INVITE, Credential]) ->
+
+    {ok, _} = handle(User#t_user.id, ?C_ROOM_INVITE,
+                     [uuid:uuid_to_string(Room#t_room.id), Credential]);
+
+handle_message_command(#t_user{} = User, #t_room{} = Room,
+                       [?MC_ROOM_LEAVE]) ->
+
+    {ok, _, _} = handle(User#t_user.id, ?C_ROOM_LEAVE,
+                        [uuid:uuid_to_string(Room#t_room.id)]).
 
 send(To, Command, Data) -> command_event:send(To, Command, Data).

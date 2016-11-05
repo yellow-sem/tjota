@@ -42,7 +42,7 @@ loop(Request) ->
     end.
 
 handle(Payload, {state, Client, Manager}, _) ->
-    {request, Command, Id, Args} = data:decode_request(Payload),
+    {request, Command, Id, Args} = data:request_parse(Payload),
 
     {ok, Process} = supervisor:start_child(command_handler_sup, []),
     ok = gen_server:call(Process, {identity, Client#s_client.identity}),
@@ -99,4 +99,4 @@ manager_loop(Client) ->
 
 send(Client, Command, Id, Data) ->
     Reply = Client#s_client.socket,
-    Reply(data:encode_response({response, Command, Id, Data})).
+    Reply(data:response_format({response, Command, Id, Data})).
