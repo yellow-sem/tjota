@@ -1,4 +1,4 @@
--module(socket_handler_sup).
+-module(command_handler_sup).
 -behaviour(supervisor).
 -export([
     start_link/0
@@ -12,6 +12,6 @@ start_link() -> supervisor:start_link({local, ?MODULE}, ?MODULE, []).
 init([]) ->
     Flags = {simple_one_for_one, 0, 1},
     Children = [
-        util:child(socket_handler, worker, temporary)
+        util:child(command_handler, worker, temporary)
     ],
     {ok, {Flags, Children}}.

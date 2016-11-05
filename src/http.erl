@@ -44,7 +44,7 @@ loop(Request) ->
 handle(Payload, {state, Client, Manager}, _) ->
     {request, Command, Id, Args} = data:decode_request(Payload),
 
-    {ok, Process} = supervisor:start_child(socket_handler_sup, []),
+    {ok, Process} = supervisor:start_child(command_handler_sup, []),
     ok = gen_server:call(Process, {identity, Client#s_client.identity}),
     Handle = (catch gen_server:call(Process, {handle, Command, Args})),
 
@@ -81,7 +81,8 @@ manager_loop(Client) ->
     receive
         {identity, NewIdentity} ->
             NewClient = Client#s_client{identity = NewIdentity},
-            socket_receiver_event:subscribe(NewClient),
+            command_event:subscribe(NewClient#s_client.receiver,
+                                    NewClient#s_client.identity),
             manager_loop(NewClient);
 
         {send, {Command, Data}} ->
@@ -89,7 +90,7 @@ manager_loop(Client) ->
             manager_loop(Client);
 
         {'DOWN', _, process, _, _Reason} ->
-            socket_receiver_event:unsubscribe(Client),
+            command_event:unsubscribe(Client#s_client.receiver),
             ok;
 
         _ ->

@@ -1,4 +1,4 @@
--module(socket_handler).
+-module(command_handler).
 -behaviour(gen_server).
 -export([
     start_link/0
@@ -12,7 +12,6 @@
     code_change/3
 ]).
 
--include("socket.hrl").
 -include("db.hrl").
 -include("data.hrl").
 
@@ -32,7 +31,7 @@ handle_info(_Info, Client) -> {noreply, Client}.
 
 terminate(_Reason, _Client) -> ok.
 
-code_change(_OldVsn, #s_client{} = Client, _Extra) -> {ok, Client}.
+code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
 handle(Identity, ?C_SYS_EXIT, []) ->
     {ok, Identity, stop};
@@ -224,4 +223,4 @@ handle(Identity, ?C_STATUS_REQ, []) ->
     ],
     {ok, Identity}.
 
-send(To, Command, Data) -> socket_receiver_event:send(To, Command, Data).
+send(To, Command, Data) -> command_event:send(To, Command, Data).

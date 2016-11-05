@@ -1,4 +1,4 @@
--module(socket_receiver_event).
+-module(command_event).
 -behaviour(gen_event).
 -export([
     start_link/0
@@ -12,35 +12,33 @@
     code_change/3
 ]).
 -export([
-    subscribe/1,
+    subscribe/2,
     unsubscribe/1
 ]).
 -export([
     send/3
 ]).
 
--include("socket.hrl").
-
--define(MANAGER_REF, socket_receiver_event).
+-define(MANAGER_REF, command_event).
 
 start_link() -> gen_event:start_link({local, ?MANAGER_REF}).
 
-init(#s_client{} = Client) -> {ok, Client}.
+init({new, Identity, Receiver}) -> {ok, {state, Identity, Receiver}}.
 
 handle_event({send, {identity, Identity}, Command, Data},
-             #s_client{identity = Identity} = Client) ->
-    Client#s_client.receiver ! {send, {Command, Data}},
-    {ok, Client};
+             {state, Identity, Receiver}) ->
+    Receiver ! {send, {Command, Data}},
+    {ok, {state, Identity, Receiver}};
 
 handle_event({send, {receiver, Receiver}, Command, Data},
-             #s_client{receiver = Receiver} = Client) ->
-    Client#s_client.receiver ! {send, {Command, Data}},
-    {ok, Client};
+             {state, Identity, Receiver}) ->
+    Receiver ! {send, {Command, Data}},
+    {ok, {state, Identity, Receiver}};
 
-handle_event({send, _To, _Command, _Data}, #s_client{} = Client) ->
-    {ok, Client};
+handle_event({send, _To, _Command, _Data}, State) ->
+    {ok, State};
 
-handle_event(_, #s_client{} = Client) -> {ok, Client}.
+handle_event(_, State) -> {ok, State}.
 
 handle_call(_Request, State) -> {ok, ok, State}.
 
@@ -50,17 +48,17 @@ terminate(_Reason, _State) -> ok.
 
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
-subscribe(Client) ->
+subscribe(Receiver, Identity) ->
     gen_event:delete_handler(?MANAGER_REF,
-                             {socket_receiver_event, Client#s_client.receiver},
+                             {command_event, Receiver},
                              []),
     gen_event:add_handler(?MANAGER_REF,
-                          {socket_receiver_event, Client#s_client.receiver},
-                          Client).
+                          {command_event, Receiver},
+                          {new, Identity, Receiver}).
 
-unsubscribe(Client) ->
+unsubscribe(Receiver) ->
     gen_event:delete_handler(?MANAGER_REF,
-                             {socket_receiver_event, Client#s_client.receiver},
+                             {command_event, Receiver},
                              []).
 
 send(To, Command, Data) ->

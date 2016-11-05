@@ -56,4 +56,4 @@ request(#t_user{id = Identity} = _User, "provider", Provider, DataIn) ->
 
 request(_User, _Protocol, _Address, _DataIn) -> not_implemented.
 
-send(To, Command, Data) -> socket_receiver_event:send(To, Command, Data).
+send(To, Command, Data) -> command_event:send(To, Command, Data).

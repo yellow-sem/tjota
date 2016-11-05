@@ -40,7 +40,7 @@ handle_info({receiver, {payload, Payload}}, #s_client{} = Client) ->
 
     {request, Command, Id, Args} = data:decode_request(Payload),
 
-    {ok, Process} = supervisor:start_child(socket_handler_sup, []),
+    {ok, Process} = supervisor:start_child(command_handler_sup, []),
     ok = gen_server:call(Process, {identity, Client#s_client.identity}),
     Handle = (catch gen_server:call(Process, {handle, Command, Args})),
 
@@ -55,7 +55,8 @@ handle_info({receiver, {payload, Payload}}, #s_client{} = Client) ->
 
     if
         Client#s_client.identity =/= NewClient#s_client.identity ->
-            socket_receiver_event:subscribe(NewClient);
+            command_event:subscribe(NewClient#s_client.receiver,
+                                    NewClient#s_client.identity);
 
         true -> ok
     end,
@@ -86,7 +87,7 @@ handle_info({send, {Command, Data}}, #s_client{} = Client) ->
     {noreply, Client}.
 
 terminate(_Reason, #s_client{} = Client) ->
-    socket_receiver_event:unsubscribe(Client),
+    command_event:unsubscribe(Client#s_client.receiver),
     gen_tcp:close(Client#s_client.socket).
 
 code_change(_OldVsn, #s_client{} = Client, _Extra) -> {ok, Client}.
