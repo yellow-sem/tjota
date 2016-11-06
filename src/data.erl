@@ -11,8 +11,6 @@
 -export([
     strip/1,
     replace/3,
-    escape/1,
-    unescape/1,
     tokens/1
 ]).
 
@@ -56,11 +54,13 @@ format(#t_room{} = Room) ->
     ]);
 
 format(#t_message{user_id = Identity} = Message) ->
+    Escape = fun(Content) -> replace(Content, "'", "\\\\'") end,
+
     io_lib:format("~s ~p ~s '~s'", [
         uuid:uuid_to_string(Message#t_message.room_id),
         Message#t_message.timestamp,
         format(get_user(Identity)),
-        Message#t_message.data
+        Escape(Message#t_message.data)
     ]).
 
 format(#t_user{} = User, Status) ->
@@ -92,13 +92,13 @@ strip(Content) ->
 replace(Content, ReplaceWhat, ReplaceWith) ->
     re:replace(Content, ReplaceWhat, ReplaceWith, [global, {return, list}]).
 
-escape(Content) -> replace(Content, "\\\\'", "%quote%").
-unescape(Content) -> replace(Content, "%quote%", "'").
-
 tokens(Payload) ->
-    Message = escape(strip(Payload)),
+    Escape = fun(Content) -> replace(Content, "\\\\'", "%quote%") end,
+    Unescape = fun(Content) -> replace(Content, "%quote%", "'") end,
+
+    Message = Escape(strip(Payload)),
     {match, Groups} = re:run(Message, "'([^']+)'|([^\s']+)",
                              [{capture, all, list}, global]),
     Tokens = [case Group of [_, _, Token] -> Token; [_, Token] -> Token end
               || Group <- Groups],
-    [unescape(Token) || Token <- Tokens].
+    [Unescape(Token) || Token <- Tokens].
