@@ -41,7 +41,11 @@ loop(Request) ->
                         Path})
     end.
 
-handle(Payload, {state, Client, Manager}, _) ->
+handle(Data, State, _) ->
+    lists:last([handle(Payload, State)
+                || Payload <- string:tokens(Data, "\n")]).
+
+handle(Payload, {state, Client, Manager}) ->
     {request, Command, Id, Args} = data:request_parse(Payload),
 
     {ok, Process} = supervisor:start_child(command_handler_sup, []),
