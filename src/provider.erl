@@ -16,7 +16,7 @@
     extract/3
 ]).
 -export([
-    chat_handle/3,
+    chat_handle/4,
     chat_rooms/2
 ]).
 -export([
@@ -141,7 +141,7 @@ grades(_Provider, _Token) -> not_implemented.
 
 extract(_Provider, _Token, _Url) -> not_implemented.
 
-chat_handle(Provider, Token, Text) ->
+chat_handle(Provider, Token, Text, RoomId) ->
     Url = iolist_to_string(io_lib:format(
         "~s/api/v1/chat/handle/",
         [base(Provider)]
@@ -151,7 +151,7 @@ chat_handle(Provider, Token, Text) ->
         Url,
         [{"Authorization", io_lib:format("Token ~s", [Token])}],
         "application/x-www-form-urlencoded",
-        url_encode([{"text", Text}])
+        url_encode([{"text", Text}, {"room_id", RoomId}])
     }, [], []),
 
     {Data} = jiffy:decode(Body),

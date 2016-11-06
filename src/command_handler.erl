@@ -244,6 +244,15 @@ handle_message(#t_user{} = User,
     handle_message_command(User, Room, data:tokens(Payload));
 
 handle_message(#t_user{} = User,
+               #t_room{} = Room,
+               #t_message{data = [$! | Payload]} = Message) ->
+
+    {ok, _} = db:insert_message(Message),
+    ok = broadcast_message(Room, Message),
+
+    handle_provider_command(User, Room, data:tokens(Payload));
+
+handle_message(#t_user{} = User,
                #t_room{type = ?T_ROOM_BOT} = Room,
                #t_message{} = Message) ->
 
@@ -273,8 +282,23 @@ handle_message_command(#t_user{} = User, #t_room{} = Room,
                         [uuid:uuid_to_string(Room#t_room.id)]);
 
 handle_message_command(#t_user{} = User, #t_room{} = _Room,
-                       [?MC_STATUS_SET, Status]) ->
+                       [?MC_STATUS_SET | Tokens]) ->
+
+    Status = string:join(Tokens, " "),
 
     {ok, _} = handle(User#t_user.id, ?C_STATUS_SET, [Status]).
+
+handle_provider_command(#t_user{} = User, #t_room{} = Room,
+                        [Provider | Tokens]) ->
+
+    Data = string:join(Tokens, " "),
+
+    {ok, Process} = supervisor:start_child(bot_handler_sup, []),
+    (catch gen_server:cast(
+        Process,
+        {dispatch, User,
+         Room#t_room{data = string:concat("provider://", Provider)},
+         #t_message{data = Data}}
+    )).
 
 send(To, Command, Data) -> command_event:send(To, Command, Data).

@@ -36,7 +36,7 @@
     id::?ID,
     name::string(),
     type::string(),
-    data::any()
+    data = none::any()
 }).
 
 -record(t_message, {
