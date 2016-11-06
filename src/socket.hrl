@@ -1,4 +1,4 @@
--define(DEFAULT_HOST, {127, 0, 0, 1}).
+-define(DEFAULT_HOST, {192, 168, 0, 4}).
 -define(DEFAULT_PORT, 4080).
 
 -record(s_address, {

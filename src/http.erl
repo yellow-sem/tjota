@@ -41,9 +41,8 @@ loop(Request) ->
                         Path})
     end.
 
-handle(Data, State, _) ->
-    lists:last([handle(Payload, State)
-                || Payload <- string:tokens(Data, "\n")]).
+handle(List, State, _) ->
+    lists:last([handle(Payload, State) || Payload <- List]).
 
 handle(Payload, {state, Client, Manager}) ->
     {request, Command, Id, Args} = data:request_parse(Payload),
