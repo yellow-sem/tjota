@@ -14,6 +14,7 @@
 
 -include("db.hrl").
 -include("data.hrl").
+-include("provider.hrl").
 
 start_link() -> gen_server:start_link(?MODULE, default, []).
 
@@ -86,6 +87,21 @@ handle(Identity, ?C_ROOM_LIST, [Id]) ->
     {ok, Identity};
 
 handle(Identity, ?C_ROOM_DISCOVER, []) ->
+    [#t_user{provider = Provider}] = db:select_user(#t_user{id = Identity}),
+    [#t_token{token = Token}] = db:select_token(#t_token{user_id = Identity,
+                                                         provider = Provider}),
+    {true, Rooms} = provider:chat_rooms(Provider, Token),
+    [
+        db:insert_room(#t_room{
+            id = Room#p_room.id,
+            name = Room#p_room.name,
+            type = ?T_ROOM_PUBLIC
+        }) || Room <- Rooms
+    ],
+    [
+        handle(Identity, ?C_ROOM_JOIN, [Room#p_room.id])
+        || Room <- Rooms
+    ],
     {ok, Identity};
 
 handle(Identity, ?C_ROOM_CREATE, [Name, Type]) ->
@@ -117,8 +133,8 @@ handle(Identity, ?C_ROOM_CREATE, [Name, Type, Data]) ->
 
 handle(Identity, ?C_ROOM_JOIN, [Id]) ->
     [User] = db:select_user(#t_user{id = Identity}),
-    Room = #t_room{id = uuid:string_to_uuid(Id)},
-    [#t_room{type = ?T_ROOM_PUBLIC}] = db:select_room(Room),
+    [Room] = db:select_room(#t_room{id = uuid:string_to_uuid(Id)}),
+    #t_room{type = ?T_ROOM_PUBLIC} = Room,
     {ok, _} = db:sym_insert_user_room(User, Room, true),
     send({identity, Identity}, ?C_ROOM_SELF, data:format(Room)),
     [

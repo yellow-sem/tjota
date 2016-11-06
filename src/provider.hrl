@@ -1,7 +1,6 @@
--define(ID, any()).
 
 -record(p_course, {
-    id::?ID,
+    id::any(),
     name::string(),
     category::string(),
     active::boolean(),
@@ -15,7 +14,7 @@
 }).
 
 -record(p_assignment, {
-    id::?ID,
+    id::any(),
     name::string(),
     group::string(),
     url::string(),
@@ -31,7 +30,7 @@
 -define(P_ROLE_SUPERVISOR, "supervisor").
 
 -record(p_room, {
-    id::?ID,
+    id::any(),
     name::string(),
     type::string(),
     role::string()
