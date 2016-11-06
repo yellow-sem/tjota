@@ -31,3 +31,5 @@
 
 -define(MC_ROOM_LEAVE, "leave").
 -define(MC_ROOM_INVITE, "invite").
+
+-define(MC_STATUS_SET, "status").

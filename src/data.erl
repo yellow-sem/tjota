@@ -8,6 +8,13 @@
     format/2,
     format/3
 ]).
+-export([
+    strip/1,
+    replace/3,
+    escape/1,
+    unescape/1,
+    tokens/1
+]).
 
 -include("db.hrl").
 
@@ -15,11 +22,7 @@ request_parse(Payload) when is_binary(Payload) ->
     request_parse(binary_to_list(Payload));
 
 request_parse(Payload) ->
-    Message = strip(Payload),
-    {match, Groups} = re:run(Message, "'([^']+)'|([^\s']+)",
-                             [{capture, all, list}, global]),
-    Tokens = [case Group of [_, _, Token] -> Token; [_, Token] -> Token end
-              || Group <- Groups],
+    Tokens = tokens(Payload),
     case Tokens of
         [Command, Id|Args] -> ok;
         [Command|Args] -> Id = any;
@@ -85,3 +88,17 @@ get_user(Identity) -> [User] = db:select_user(#t_user{id = Identity}), User.
 
 strip(Content) ->
     re:replace(Content, "(^\\s+)|(\\s+$)", "", [global, {return, list}]).
+
+replace(Content, ReplaceWhat, ReplaceWith) ->
+    re:replace(Content, ReplaceWhat, ReplaceWith, [global, {return, list}]).
+
+escape(Content) -> replace(Content, "\\\\'", "%quote%").
+unescape(Content) -> replace(Content, "%quote%", "'").
+
+tokens(Payload) ->
+    Message = escape(strip(Payload)),
+    {match, Groups} = re:run(Message, "'([^']+)'|([^\s']+)",
+                             [{capture, all, list}, global]),
+    Tokens = [case Group of [_, _, Token] -> Token; [_, Token] -> Token end
+              || Group <- Groups],
+    [unescape(Token) || Token <- Tokens].

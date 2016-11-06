@@ -223,9 +223,9 @@ broadcast_message(Room, Message) ->
 
 handle_message(#t_user{} = User,
                #t_room{} = Room,
-               #t_message{data = [$/ | Command]} = _Message) ->
+               #t_message{data = [$/ | Payload]} = _Message) ->
 
-    handle_message_command(User, Room, string:tokens(Command, " "));
+    handle_message_command(User, Room, data:tokens(Payload));
 
 handle_message(#t_user{} = User,
                #t_room{type = ?T_ROOM_BOT} = Room,
@@ -254,6 +254,11 @@ handle_message_command(#t_user{} = User, #t_room{} = Room,
                        [?MC_ROOM_LEAVE]) ->
 
     {ok, _, _} = handle(User#t_user.id, ?C_ROOM_LEAVE,
-                        [uuid:uuid_to_string(Room#t_room.id)]).
+                        [uuid:uuid_to_string(Room#t_room.id)]);
+
+handle_message_command(#t_user{} = User, #t_room{} = _Room,
+                       [?MC_STATUS_SET, Status]) ->
+
+    {ok, _} = handle(User#t_user.id, ?C_STATUS_SET, [Status]).
 
 send(To, Command, Data) -> command_event:send(To, Command, Data).
