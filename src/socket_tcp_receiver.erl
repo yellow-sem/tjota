@@ -38,7 +38,8 @@ handle_cast({socket, Socket}, #s_client{} = _Client) ->
 
 handle_info({receiver, {payload, Payload}}, #s_client{} = Client) ->
 
-    {request, Command, Id, Args} = data:request_parse(Payload),
+    Request = data:request_parse(unicode:characters_to_list(Payload)),
+    {request, Command, Id, Args} = Request,
 
     {ok, Process} = supervisor:start_child(command_handler_sup, []),
     ok = gen_server:call(Process, {identity, Client#s_client.identity}),
@@ -93,5 +94,6 @@ terminate(_Reason, #s_client{} = Client) ->
 code_change(_OldVsn, #s_client{} = Client, _Extra) -> {ok, Client}.
 
 send(#s_client{} = Client, Command, Id, Data) ->
+    Response = {response, Command, Id, Data},
     gen_tcp:send(Client#s_client.socket,
-                 data:response_format({response, Command, Id, Data})).
+                 unicode:characters_to_binary(data:response_format(Response))).

@@ -190,7 +190,7 @@ decode(Value) when is_binary(Value) -> unicode:characters_to_list(Value);
 decode(Value) -> Value.
 
 iolist_to_string(Value) ->
-    erlang:binary_to_list(erlang:iolist_to_binary(Value)).
+    unicode:characters_to_list(erlang:iolist_to_binary(Value)).
 
 lookup(Data, Key) ->
     case proplists:lookup(Key, Data) of
