@@ -73,6 +73,9 @@ bootstrap() ->
 decode(Value) when is_binary(Value) -> unicode:characters_to_list(Value);
 decode(Value) -> Value.
 
+encode(Value) when is_atom(Value) -> Value;
+encode(Value) -> unicode:characters_to_binary(Value).
+
 get_cqerl_client() -> cqerl:get_client({}).
 
 create_keyspace() ->
@@ -238,7 +241,7 @@ insert_user(#t_user{} = User) ->
             {id, User#t_user.id},
             {provider, User#t_user.provider},
             {username, User#t_user.username},
-            {status, User#t_user.status},
+            {status, encode(User#t_user.status)},
             {active, User#t_user.active}
         ]
     }).
@@ -384,7 +387,7 @@ insert_room(#t_room{} = Room) ->
         ", [?KEYSPACE, ?TABLE_ROOM]),
         values = [
             {id, Room#t_room.id},
-            {name, Room#t_room.name},
+            {name, encode(Room#t_room.name)},
             {type, Room#t_room.type},
             {data, Room#t_room.data}
         ]
@@ -400,9 +403,9 @@ update_room(#t_room{} = Room) ->
         ", [?KEYSPACE, ?TABLE_ROOM]),
         values = [
             {id, Room#t_room.id},
-            {name, Room#t_room.name},
+            {name, encode(Room#t_room.name)},
             {type, Room#t_room.type},
-            {data, Room#t_room.data}
+            {data, encode(Room#t_room.data)}
         ]
     }).
 
@@ -456,7 +459,7 @@ insert_message(#t_message{} = Message) ->
             {timestamp, Message#t_message.timestamp},
             {id, Message#t_message.id},
             {user_id, Message#t_message.user_id},
-            {data, Message#t_message.data}
+            {data, encode(Message#t_message.data)}
         ]
     }).
 
@@ -480,7 +483,7 @@ map_message(Row) ->
         timestamp = proplists:get_value(timestamp, Row),
         id = proplists:get_value(id, Row),
         user_id = proplists:get_value(user_id, Row),
-        data = proplists:get_value(data, Row)
+        data = decode(proplists:get_value(data, Row))
     }.
 
 %%%%%%%%%%%%%

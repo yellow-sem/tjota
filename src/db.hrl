@@ -10,7 +10,7 @@
     id::?ID,
     provider::string(),
     username::string(),
-    status::string(),
+    status = none::string(),
     active::boolean()
 }).
 
@@ -36,7 +36,7 @@
     id::?ID,
     name::string(),
     type::string(),
-    data::any()
+    data = none::any()
 }).
 
 -record(t_message, {

@@ -16,9 +16,6 @@
 
 -include("db.hrl").
 
-request_parse(Payload) when is_binary(Payload) ->
-    request_parse(binary_to_list(Payload));
-
 request_parse(Payload) ->
     Tokens = tokens(Payload),
     case Tokens of
