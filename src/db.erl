@@ -70,6 +70,10 @@ bootstrap() ->
         room_user
     ]).
 
+%% ------------------------------------------------------------------
+%% Utilities
+%% ------------------------------------------------------------------
+
 decode(Value) when is_binary(Value) -> unicode:characters_to_list(Value);
 decode(Value) -> Value.
 
@@ -78,8 +82,20 @@ encode(Value) -> unicode:characters_to_binary(Value).
 
 get_cqerl_client() -> cqerl:get_client({}).
 
+%% ------------------------------------------------------------------
+%% Tables
+%% ------------------------------------------------------------------
+
+%% ------------------------------------------------------------------
+%% @doc Create database.
+%% @end
+%% ------------------------------------------------------------------
 create_keyspace() ->
+
+    % Obtain CQL client
     {ok, Client} = get_cqerl_client(),
+
+    % Execute `CREATE KEYSPACE` query
     {ok, _} = cqerl:run_query(Client, io_lib:format("
         CREATE KEYSPACE IF NOT EXISTS ~s
         WITH replication = {
@@ -88,11 +104,23 @@ create_keyspace() ->
         }
     ", [?KEYSPACE])).
 
+%% ------------------------------------------------------------------
+%% @doc Create the specified list of tables.
+%% @end
+%% ------------------------------------------------------------------
 create_table([]) -> ok;
 create_table([H|T]) -> create_table(H), create_table(T);
 
+%% ------------------------------------------------------------------
+%% @doc Create the `user` table.
+%% @end
+%% ------------------------------------------------------------------
 create_table(user) ->
+
+    % Obtain CQL client
     {ok, Client} = get_cqerl_client(),
+
+    % Execute `CREATE TABLE` query
     {ok, _} = cqerl:run_query(Client, io_lib:format("
         CREATE TABLE IF NOT EXISTS ~s.~s (
             id UUID,
@@ -185,9 +213,9 @@ create_table(room_user) ->
         )
     ", [?KEYSPACE, ?TABLE_ROOM_USER])).
 
-%%%%%%%%%
-% alias %
-%%%%%%%%%
+%% ------------------------------------------------------------------
+%% Alias
+%% ------------------------------------------------------------------
 
 insert_alias(#t_alias{} = Alias) ->
     {ok, Client} = get_cqerl_client(),
@@ -225,10 +253,9 @@ map_alias(Row) ->
         user_id = proplists:get_value(user_id, Row)
     }.
 
-
-%%%%%%%%
-% user %
-%%%%%%%%
+%% ------------------------------------------------------------------
+%% User
+%% ------------------------------------------------------------------
 
 insert_user(#t_user{} = User) ->
     {ok, Client} = get_cqerl_client(),
@@ -283,9 +310,9 @@ map_user(Row) ->
         active = proplists:get_value(active, Row)
     }.
 
-%%%%%%%%%%%
-% session %
-%%%%%%%%%%%
+%% ------------------------------------------------------------------
+%% Session
+%% ------------------------------------------------------------------
 
 insert_session(#t_session{} = Session) ->
     {ok, Client} = get_cqerl_client(),
@@ -335,9 +362,9 @@ map_session(Row) ->
         token = proplists:get_value(token, Row)
     }.
 
-%%%%%%%%%
-% token %
-%%%%%%%%%
+%% ------------------------------------------------------------------
+%% Token
+%% ------------------------------------------------------------------
 
 insert_token(#t_token{} = Token) ->
     {ok, Client} = get_cqerl_client(),
@@ -374,9 +401,9 @@ map_token(Row) ->
         token = proplists:get_value(token, Row)
     }.
 
-%%%%%%%%
-% room %
-%%%%%%%%
+%% ------------------------------------------------------------------
+%% Room
+%% ------------------------------------------------------------------
 
 insert_room(#t_room{} = Room) ->
     {ok, Client} = get_cqerl_client(),
@@ -443,9 +470,9 @@ map_room(Row) ->
         data = decode(proplists:get_value(data, Row))
     }.
 
-%%%%%%%%%%%
-% message %
-%%%%%%%%%%%
+%% ------------------------------------------------------------------
+%% Message
+%% ------------------------------------------------------------------
 
 insert_message(#t_message{} = Message) ->
     {ok, Client} = get_cqerl_client(),
@@ -486,9 +513,9 @@ map_message(Row) ->
         data = decode(proplists:get_value(data, Row))
     }.
 
-%%%%%%%%%%%%%
-% user_room %
-%%%%%%%%%%%%%
+%% ------------------------------------------------------------------
+%% User -> Room
+%% ------------------------------------------------------------------
 
 insert_user_room(#t_user{} = User, #t_room{} = Room, Active) ->
     {ok, Client} = get_cqerl_client(),
@@ -553,9 +580,9 @@ map_user_room(Row) ->
         id = proplists:get_value(room_id, Row)
     }.
 
-%%%%%%%%%%%%%
-% room_user %
-%%%%%%%%%%%%%
+%% ------------------------------------------------------------------
+%% Room -> User
+%% ------------------------------------------------------------------
 
 insert_room_user(#t_room{} = Room, #t_user{} = User, Active) ->
     {ok, Client} = get_cqerl_client(),
@@ -620,9 +647,9 @@ map_room_user(Row) ->
         id = proplists:get_value(user_id, Row)
     }.
 
-%%%%%%%%%%%%%
-% shortcuts %
-%%%%%%%%%%%%%
+%% ------------------------------------------------------------------
+%% Shortcuts
+%% ------------------------------------------------------------------
 
 sym_insert_user_room(#t_user{} = User, #t_room{} = Room, Active) ->
     {ok, _} = insert_user_room(User, Room, Active),

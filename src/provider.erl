@@ -10,9 +10,6 @@
     course_assignments/3
 ]).
 -export([
-    grades/2
-]).
--export([
     extract/3
 ]).
 -export([
@@ -30,20 +27,35 @@
 base("yellow") -> "https://api.tjota.online";
 base(Domain) -> io_lib:format("https://~s", [Domain]).
 
+%% ------------------------------------------------------------------
+%% Identity
+%% ------------------------------------------------------------------
+
+%% ------------------------------------------------------------------
+%% @doc Authenticate with the specified credentials.
+%% @end
+%% ------------------------------------------------------------------
 identity_login(Provider, Username, Password) ->
+
+    % Build URL
     Url = iolist_to_string(io_lib:format(
         "~s/api/v1/identity/login/",
         [base(Provider)]
     )),
 
+    % Send request
     {ok, {{_, ?HTTP_OK, _}, _, Body}} = httpc:request(post, {
         Url, [],
         "application/x-www-form-urlencoded",
         url_encode([{"username", Username}, {"password", Password}])
     }, [], []),
 
+    % Decode response
     {Data} = jiffy:decode(Body),
 
+    % Return tuple of `{Success, Token}` where
+    % `Success` is `true` or `false`
+    % `Token` is a string token or `none`
     {lookup(Data, <<"success">>),
      lookup(Data, <<"token">>)}.
 
@@ -63,6 +75,10 @@ identity_logout(Provider, Token) ->
     {Data} = jiffy:decode(Body),
 
     lookup(Data, <<"success">>).
+
+%% ------------------------------------------------------------------
+%% Courses
+%% ------------------------------------------------------------------
 
 courses(Provider, Token) ->
     Url = iolist_to_string(io_lib:format(
@@ -137,9 +153,15 @@ course_assignments(Provider, Token, CourseId) ->
         status = decode(lookup(Data, <<"status">>))
     } || {Data} <- jiffy:decode(Body)]}.
 
-grades(_Provider, _Token) -> not_implemented.
+%% ------------------------------------------------------------------
+%% Links
+%% ------------------------------------------------------------------
 
 extract(_Provider, _Token, _Url) -> not_implemented.
+
+%% ------------------------------------------------------------------
+%% Chat
+%% ------------------------------------------------------------------
 
 chat_handle(Provider, Token, Text, RoomId) ->
     Url = iolist_to_string(io_lib:format(
@@ -175,6 +197,10 @@ chat_rooms(Provider, Token) ->
         type = decode(lookup(Data, <<"type">>)),
         role = decode(lookup(Data, <<"role">>))
     } || {Data} <- jiffy:decode(Body)]}.
+
+%% ------------------------------------------------------------------
+%% Utilities
+%% ------------------------------------------------------------------
 
 url_encode({K, V}) ->
     io_lib:format("~s=~s", [edoc_lib:escape_uri(K),
