@@ -55,6 +55,10 @@
 -define(TABLE_USER_ROOM, "user_room").
 -define(TABLE_ROOM_USER, "room_user").
 
+%% ------------------------------------------------------------------
+%% Bootstrap
+%% ------------------------------------------------------------------
+
 bootstrap() ->
     create_keyspace(),
     create_table([
@@ -132,6 +136,10 @@ create_table(user) ->
         )
     ", [?KEYSPACE, ?TABLE_USER]));
 
+%% ------------------------------------------------------------------
+%% @doc Create the `alias` table.
+%% @end
+%% ------------------------------------------------------------------
 create_table(alias) ->
     {ok, Client} = get_cqerl_client(),
     {ok, _} = cqerl:run_query(Client, io_lib:format("
@@ -143,6 +151,10 @@ create_table(alias) ->
         )
     ", [?KEYSPACE, ?TABLE_ALIAS]));
 
+%% ------------------------------------------------------------------
+%% @doc Create the `session` table.
+%% @end
+%% ------------------------------------------------------------------
 create_table(session) ->
     {ok, Client} = get_cqerl_client(),
     {ok, _} = cqerl:run_query(Client, io_lib:format("
@@ -155,6 +167,10 @@ create_table(session) ->
         )
     ", [?KEYSPACE, ?TABLE_SESSION]));
 
+%% ------------------------------------------------------------------
+%% @doc Create the `token` table.
+%% @end
+%% ------------------------------------------------------------------
 create_table(token) ->
     {ok, Client} = get_cqerl_client(),
     {ok, _} = cqerl:run_query(Client, io_lib:format("
@@ -166,6 +182,10 @@ create_table(token) ->
         )
     ", [?KEYSPACE, ?TABLE_TOKEN]));
 
+%% ------------------------------------------------------------------
+%% @doc Create the `room` table.
+%% @end
+%% ------------------------------------------------------------------
 create_table(room) ->
     {ok, Client} = get_cqerl_client(),
     {ok, _} = cqerl:run_query(Client, io_lib:format("
@@ -178,6 +198,10 @@ create_table(room) ->
         )
     ", [?KEYSPACE, ?TABLE_ROOM]));
 
+%% ------------------------------------------------------------------
+%% @doc Create the `message` table.
+%% @end
+%% ------------------------------------------------------------------
 create_table(message) ->
     {ok, Client} = get_cqerl_client(),
     {ok, _} = cqerl:run_query(Client, io_lib:format("
@@ -191,6 +215,10 @@ create_table(message) ->
         ) WITH CLUSTERING ORDER BY (timestamp ASC)
     ", [?KEYSPACE, ?TABLE_MESSAGE]));
 
+%% ------------------------------------------------------------------
+%% @doc Create the `user_room` table.
+%% @end
+%% ------------------------------------------------------------------
 create_table(user_room) ->
     {ok, Client} = get_cqerl_client(),
     {ok, _} = cqerl:run_query(Client, io_lib:format("
@@ -202,6 +230,10 @@ create_table(user_room) ->
         )
     ", [?KEYSPACE, ?TABLE_USER_ROOM]));
 
+%% ------------------------------------------------------------------
+%% @doc Create the `room_user` table.
+%% @end
+%% ------------------------------------------------------------------
 create_table(room_user) ->
     {ok, Client} = get_cqerl_client(),
     {ok, _} = cqerl:run_query(Client, io_lib:format("
@@ -217,6 +249,10 @@ create_table(room_user) ->
 %% Alias
 %% ------------------------------------------------------------------
 
+%% ------------------------------------------------------------------
+%% @doc Insert an alias.
+%% @end
+%% ------------------------------------------------------------------
 insert_alias(#t_alias{} = Alias) ->
     {ok, Client} = get_cqerl_client(),
     {ok, _} = cqerl:run_query(Client, #cql_query{
@@ -232,6 +268,10 @@ insert_alias(#t_alias{} = Alias) ->
         ]
     }).
 
+%% ------------------------------------------------------------------
+%% @doc Select an alias.
+%% @end
+%% ------------------------------------------------------------------
 select_alias(#t_alias{} = Alias) ->
     {ok, Client} = get_cqerl_client(),
     {ok, Result} = cqerl:run_query(Client, #cql_query{
@@ -257,6 +297,10 @@ map_alias(Row) ->
 %% User
 %% ------------------------------------------------------------------
 
+%% ------------------------------------------------------------------
+%% @doc Insert a user.
+%% @end
+%% ------------------------------------------------------------------
 insert_user(#t_user{} = User) ->
     {ok, Client} = get_cqerl_client(),
     {ok, _} = cqerl:run_query(Client, #cql_query{
@@ -273,8 +317,16 @@ insert_user(#t_user{} = User) ->
         ]
     }).
 
+%% ------------------------------------------------------------------
+%% @doc Update a user.
+%% @end
+%% ------------------------------------------------------------------
 update_user(#t_user{} = User) -> insert_user(User).
 
+%% ------------------------------------------------------------------
+%% @doc Select a user.
+%% @end
+%% ------------------------------------------------------------------
 select_user(#t_user{} = User) ->
     {ok, Client} = get_cqerl_client(),
     {ok, Result} = cqerl:run_query(Client, #cql_query{
@@ -288,6 +340,10 @@ select_user(#t_user{} = User) ->
     }),
     lists:map(fun map_user/1, cqerl:all_rows(Result));
 
+%% ------------------------------------------------------------------
+%% @doc Select several users.
+%% @end
+%% ------------------------------------------------------------------
 select_user(List) ->
     {ok, Client} = get_cqerl_client(),
     {ok, Result} = cqerl:run_query(Client, #cql_query{
@@ -314,6 +370,10 @@ map_user(Row) ->
 %% Session
 %% ------------------------------------------------------------------
 
+%% ------------------------------------------------------------------
+%% @doc Insert a session.
+%% @end
+%% ------------------------------------------------------------------
 insert_session(#t_session{} = Session) ->
     {ok, Client} = get_cqerl_client(),
     {ok, _} = cqerl:run_query(Client, #cql_query{
@@ -329,6 +389,10 @@ insert_session(#t_session{} = Session) ->
         ]
     }).
 
+%% ------------------------------------------------------------------
+%% @doc Delete a session.
+%% @end
+%% ------------------------------------------------------------------
 delete_session(#t_session{} = Session) ->
     {ok, Client} = get_cqerl_client(),
     {ok, _} = cqerl:run_query(Client, #cql_query{
@@ -341,6 +405,10 @@ delete_session(#t_session{} = Session) ->
         ]
     }).
 
+%% ------------------------------------------------------------------
+%% @doc Select a session.
+%% @end
+%% ------------------------------------------------------------------
 select_session(#t_session{} = Session) ->
     {ok, Client} = get_cqerl_client(),
     {ok, Result} = cqerl:run_query(Client, #cql_query{
@@ -366,6 +434,10 @@ map_session(Row) ->
 %% Token
 %% ------------------------------------------------------------------
 
+%% ------------------------------------------------------------------
+%% @doc Insert a token.
+%% @end
+%% ------------------------------------------------------------------
 insert_token(#t_token{} = Token) ->
     {ok, Client} = get_cqerl_client(),
     {ok, _} = cqerl:run_query(Client, #cql_query{
@@ -380,6 +452,10 @@ insert_token(#t_token{} = Token) ->
         ]
     }).
 
+%% ------------------------------------------------------------------
+%% @doc Select a token.
+%% @end
+%% ------------------------------------------------------------------
 select_token(#t_token{} = Token) ->
     {ok, Client} = get_cqerl_client(),
     {ok, Result} = cqerl:run_query(Client, #cql_query{
@@ -405,6 +481,10 @@ map_token(Row) ->
 %% Room
 %% ------------------------------------------------------------------
 
+%% ------------------------------------------------------------------
+%% @doc Insert a room.
+%% @end
+%% ------------------------------------------------------------------
 insert_room(#t_room{} = Room) ->
     {ok, Client} = get_cqerl_client(),
     {ok, _} = cqerl:run_query(Client, #cql_query{
@@ -420,6 +500,10 @@ insert_room(#t_room{} = Room) ->
         ]
     }).
 
+%% ------------------------------------------------------------------
+%% @doc Update a room.
+%% @end
+%% ------------------------------------------------------------------
 update_room(#t_room{} = Room) ->
     {ok, Client} = get_cqerl_client(),
     {ok, _} = cqerl:run_query(Client, #cql_query{
@@ -436,6 +520,10 @@ update_room(#t_room{} = Room) ->
         ]
     }).
 
+%% ------------------------------------------------------------------
+%% @doc Select a room.
+%% @end
+%% ------------------------------------------------------------------
 select_room(#t_room{} = Room) ->
     {ok, Client} = get_cqerl_client(),
     {ok, Result} = cqerl:run_query(Client, #cql_query{
@@ -449,6 +537,10 @@ select_room(#t_room{} = Room) ->
     }),
     lists:map(fun map_room/1, cqerl:all_rows(Result));
 
+%% ------------------------------------------------------------------
+%% @doc Select several rooms.
+%% @end
+%% ------------------------------------------------------------------
 select_room(List) ->
     {ok, Client} = get_cqerl_client(),
     {ok, Result} = cqerl:run_query(Client, #cql_query{
@@ -474,6 +566,10 @@ map_room(Row) ->
 %% Message
 %% ------------------------------------------------------------------
 
+%% ------------------------------------------------------------------
+%% @doc Insert a message.
+%% @end
+%% ------------------------------------------------------------------
 insert_message(#t_message{} = Message) ->
     {ok, Client} = get_cqerl_client(),
     {ok, _} = cqerl:run_query(Client, #cql_query{
@@ -490,6 +586,10 @@ insert_message(#t_message{} = Message) ->
         ]
     }).
 
+%% ------------------------------------------------------------------
+%% @doc Select messages.
+%% @end
+%% ------------------------------------------------------------------
 select_message(#t_message{} = Message) ->
     {ok, Client} = get_cqerl_client(),
     {ok, Result} = cqerl:run_query(Client, #cql_query{
