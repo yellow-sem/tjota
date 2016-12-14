@@ -126,9 +126,14 @@ handle(Identity, ?C_ROOM_CREATE, [Name, Type, Data]) ->
         {?T_ROOM_BOT, none} -> ok;
         {?T_ROOM_BOT, Location} ->
             [Protocol, Address] = string:tokens(Location, "://"),
-            db:insert_resource(#t_resource{protocol = Protocol,
-                                           address = Address,
-                                           room_id = Room#t_room.id});
+            Resource = #t_resource{protocol = Protocol,
+                                   address = Address,
+                                   room_id = Room#t_room.id},
+            db:insert_resource(Resource),
+            case Protocol of
+                ?T_RESOURCE_MQTT -> resource_mqtt_sup:start_resource(Resource);
+                _ -> ok
+            end;
 
         {?T_ROOM_DIRECT, none} -> ok;
         {?T_ROOM_DIRECT, Credential} ->
@@ -191,9 +196,14 @@ handle(Identity, ?C_ROOM_LEAVE, [Id]) ->
     case {Room, db:select_room_user(Room)} of
         {#t_room{type = ?T_ROOM_BOT, data = Location}, []} ->
             [Protocol, Address] = string:tokens(Location, "://"),
-            db:delete_resource(#t_resource{protocol = Protocol,
-                                           address = Address,
-                                           room_id = Room#t_room.id});
+            Resource = #t_resource{protocol = Protocol,
+                                   address = Address,
+                                   room_id = Room#t_room.id},
+            db:delete_resource(Resource),
+            case Protocol of
+                ?T_RESOURCE_MQTT -> resource_mqtt_sup:stop_resource(Resource);
+                _ -> ok
+            end;
         _ -> ok
     end,
     {ok, Identity, Id};

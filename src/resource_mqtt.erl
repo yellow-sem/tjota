@@ -1,0 +1,2 @@
+-module(resource_mqtt).
+-export([]).
