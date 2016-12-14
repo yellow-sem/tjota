@@ -123,10 +123,18 @@ handle(Identity, ?C_ROOM_CREATE, [Name, Type, Data]) ->
         || #t_user{id = I} <- db:select_room_user(Room)
     ],
     case {Type, Data} of
+        {?T_ROOM_BOT, none} -> ok;
+        {?T_ROOM_BOT, Location} ->
+            [Protocol, Address] = string:tokens(Location, "://"),
+            db:insert_resource(#t_resource{protocol = Protocol,
+                                           address = Address,
+                                           room_id = Room#t_room.id});
+
         {?T_ROOM_DIRECT, none} -> ok;
         {?T_ROOM_DIRECT, Credential} ->
             handle(Identity, ?C_ROOM_INVITE,
                    [uuid:uuid_to_string(Room#t_room.id), Credential]);
+
         {_, _} -> ok
     end,
     {ok, Identity, uuid:uuid_to_string(Room#t_room.id)};
@@ -173,13 +181,21 @@ handle(Identity, ?C_ROOM_INVITE, [Id, Credential]) ->
 
 handle(Identity, ?C_ROOM_LEAVE, [Id]) ->
     [User] = db:select_user(#t_user{id = Identity}),
-    Room = #t_room{id = uuid:string_to_uuid(Id)},
+    [Room] = db:select_room(#t_room{id = uuid:string_to_uuid(Id)}),
     {ok, _} = db:sym_update_user_room(User, Room, false),
     [
         send({identity, I}, ?C_ROOM_ANY, data:format(Room, User, out))
         || #t_user{id = I} <- db:select_room_user(Room)
     ],
     send({identity, Identity}, ?C_ROOM_EXIT, Id),
+    case {Room, db:select_room_user(Room)} of
+        {#t_room{type = ?T_ROOM_BOT, data = Location}, []} ->
+            [Protocol, Address] = string:tokens(Location, "://"),
+            db:delete_resource(#t_resource{protocol = Protocol,
+                                           address = Address,
+                                           room_id = Room#t_room.id});
+        _ -> ok
+    end,
     {ok, Identity, Id};
 
 handle(Identity, ?C_MSG_SEND, [Id, Data]) ->

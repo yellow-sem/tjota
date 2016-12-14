@@ -26,6 +26,11 @@
     select_room/1
 ]).
 -export([
+    insert_resource/1,
+    delete_resource/1,
+    select_resource/1
+]).
+-export([
     insert_message/1,
     select_message/1
 ]).
@@ -50,6 +55,7 @@
 -define(TABLE_SESSION, "session").
 -define(TABLE_TOKEN, "\"token\"").
 -define(TABLE_ROOM, "room").
+-define(TABLE_RESOURCE, "resource").
 -define(TABLE_MESSAGE, "message").
 
 -define(TABLE_USER_ROOM, "user_room").
@@ -67,6 +73,7 @@ bootstrap() ->
         session,
         token,
         room,
+        resource,
         message
     ]),
     create_table([
@@ -197,6 +204,21 @@ create_table(room) ->
             PRIMARY KEY (id)
         )
     ", [?KEYSPACE, ?TABLE_ROOM]));
+
+%% ------------------------------------------------------------------
+%% @doc Create the `resource` table.
+%% @end
+%% ------------------------------------------------------------------
+create_table(resource) ->
+    {ok, Client} = get_cqerl_client(),
+    {ok, _} = cqerl:run_query(Client, io_lib:format("
+        CREATE TABLE IF NOT EXISTS ~s.~s (
+            protocol TEXT,
+            address TEXT,
+            room_id UUID,
+            PRIMARY KEY (protocol, address, room_id)
+        )
+    ", [?KEYSPACE, ?TABLE_RESOURCE]));
 
 %% ------------------------------------------------------------------
 %% @doc Create the `message` table.
@@ -560,6 +582,58 @@ map_room(Row) ->
         name = decode(proplists:get_value(name, Row)),
         type = decode(proplists:get_value(type, Row)),
         data = decode(proplists:get_value(data, Row))
+    }.
+
+%% ------------------------------------------------------------------
+%% Resource
+%% ------------------------------------------------------------------
+
+insert_resource(#t_resource{} = Resource) ->
+    {ok, Client} = get_cqerl_client(),
+    {ok, _} = cqerl:run_query(Client, #cql_query{
+        statement = io_lib:format("
+            INSERT INTO ~s.~s (protocol, address, room_id)
+            VALUES (?, ?, ?)
+        ", [?KEYSPACE, ?TABLE_RESOURCE]),
+        values = [
+            {protocol, Resource#t_resource.protocol},
+            {address, Resource#t_resource.address},
+            {room_id, Resource#t_resource.room_id}
+        ]
+    }).
+
+delete_resource(#t_resource{} = Resource) ->
+    {ok, Client} = get_cqerl_client(),
+    {ok, _} = cqerl:run_query(Client, #cql_query{
+        statement = io_lib:format("
+            DELETE FROM ~s.~s
+            WHERE protocol = ? AND address = ? AND room_id = ?
+        ", [?KEYSPACE, ?TABLE_RESOURCE]),
+        values = [
+            {protocol, Resource#t_resource.protocol},
+            {address, Resource#t_resource.address},
+            {room_id, Resource#t_resource.room_id}
+        ]
+    }).
+
+select_resource(#t_resource{} = Resource) ->
+    {ok, Client} = get_cqerl_client(),
+    {ok, Result} = cqerl:run_query(Client, #cql_query{
+        statement = io_lib:format("
+            SELECT * FROM ~s.~s
+            WHERE protocol = ?
+        ", [?KEYSPACE, ?TABLE_RESOURCE]),
+        values = [
+            {protocol, Resource#t_resource.protocol}
+        ]
+    }),
+    lists:map(fun map_resource/1, cqerl:all_rows(Result)).
+
+map_resource(Row) ->
+    #t_resource{
+        protocol = decode(proplists:get_value(protocol, Row)),
+        address = decode(proplists:get_value(address, Row)),
+        room_id = proplists:get_value(room_id, Row)
     }.
 
 %% ------------------------------------------------------------------

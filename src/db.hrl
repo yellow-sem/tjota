@@ -39,6 +39,16 @@
     data = none::any()
 }).
 
+-define(T_RESOURCE_PROVIDER, "provider").
+-define(T_RESOURCE_HTTP, "http").
+-define(T_RESOURCE_MQTT, "mqtt").
+
+-record(t_resource, {
+    protocol::string(),
+    address::string(),
+    room_id::?ID
+}).
+
 -record(t_message, {
     room_id::?ID,
     timestamp::any(),

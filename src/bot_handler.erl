@@ -49,7 +49,7 @@ dispatch(#t_user{} = User, #t_room{} = Room,
     ok.
 
 request(#t_user{id = Identity} = _User, #t_room{id = RoomId} = _Room,
-        "provider", Provider, DataIn) ->
+        ?T_RESOURCE_PROVIDER, Provider, DataIn) ->
     [#t_token{token = Token}] = db:select_token(#t_token{user_id = Identity,
                                                          provider = Provider}),
     {true, DataOut} = provider:chat_handle(Provider, Token, DataIn,
