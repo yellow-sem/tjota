@@ -151,19 +151,24 @@ handle(Identity, ?C_ROOM_INVITE, [Id, Credential]) ->
                                        username = Username}),
     [User] = db:select_user(#t_user{id = Alias#t_alias.user_id}),
     {ok, _} = db:sym_insert_user_room(User, Room, true),
-    send({identity, Alias#t_alias.user_id}, ?C_ROOM_SELF, data:format(Room)),
-    [
-        send({identity, I}, ?C_ROOM_ANY, data:format(Room, User, in))
-        || #t_user{id = I} <- db:select_room_user(Room)
-    ],
     case Room of
         #t_room{type = ?T_ROOM_DIRECT} ->
-            Data = uuid:uuid_to_string(User#t_user.id),
-            db:update_room(Room#t_room{data = Data}),
-            send({identity, Identity}, ?C_STATUS_RECV,
-                 data:format(User, User#t_user.status));
-        _ -> ok
+            Data = io_lib:format("(~s):(~s)", [
+                data:format(#t_user{id = Identity}),
+                data:format(User)
+            ]),
+            URoom = Room#t_room{data = Data},
+            db:update_room(URoom);
+        _ ->
+            URoom = Room
     end,
+    send({identity, Alias#t_alias.user_id}, ?C_ROOM_SELF, data:format(URoom)),
+    [
+        send({identity, I}, ?C_ROOM_ANY, data:format(URoom, User, in))
+        || #t_user{id = I} <- db:select_room_user(URoom)
+    ],
+    send({identity, Identity}, ?C_STATUS_RECV,
+         data:format(User, User#t_user.status)),
     {ok, Identity};
 
 handle(Identity, ?C_ROOM_LEAVE, [Id]) ->
@@ -209,7 +214,7 @@ handle(Identity, ?C_STATUS_SET, [Status]) ->
     db:update_user(User#t_user{status = Status}),
     [
         send({identity, I}, ?C_STATUS_RECV, data:format(User, Status))
-        || I <- sets:to_list(sets:from_list(lists:concat([
+        || I <- sets:to_list(sets:from_list([Identity] ++ lists:concat([
             [U#t_user.id || U <- db:select_room_user(R)]
             || R <- db:select_room(db:select_user_room(User)),
                R#t_room.type == ?T_ROOM_DIRECT
@@ -218,15 +223,17 @@ handle(Identity, ?C_STATUS_SET, [Status]) ->
     {ok, Identity};
 
 handle(Identity, ?C_STATUS_REQ, []) ->
-    [User] = db:select_user(#t_user{id = Identity}),
-    Status = User#t_user.status,
+    User = #t_user{id = Identity},
     [
-        send({identity, I}, ?C_STATUS_RECV, data:format(User, Status))
-        || I <- sets:to_list(sets:from_list(lists:concat([
-            [U#t_user.id || U <- db:select_room_user(R)]
-            || R <- db:select_room(db:select_user_room(User)),
-               R#t_room.type == ?T_ROOM_DIRECT
-        ])))
+        send({identity, Identity}, ?C_STATUS_RECV, data:format(S, status))
+        || S <- db:select_user([
+            #t_user{id = I}
+            || I <- sets:to_list(sets:from_list([Identity] ++ lists:concat([
+                [U#t_user.id || U <- db:select_room_user(R)]
+                || R <- db:select_room(db:select_user_room(User)),
+                   R#t_room.type == ?T_ROOM_DIRECT
+            ])))
+        ])
     ],
     {ok, Identity}.
 

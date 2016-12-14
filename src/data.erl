@@ -29,6 +29,9 @@ request_parse(Payload) ->
 response_format({response, Command, Id, Data}) ->
     io_lib:format("~s ~s ~s~n", [Command, Id, Data]).
 
+format(#t_user{id = Identity, username = undefined}) ->
+    format(get_user(Identity));
+
 format(#t_user{} = User) ->
     io_lib:format("~s ~s@~s", [
         uuid:uuid_to_string(User#t_user.id),
@@ -59,6 +62,9 @@ format(#t_message{user_id = Identity} = Message) ->
         format(get_user(Identity)),
         Escape(Message#t_message.data)
     ]).
+
+format(#t_user{status = Status} = User, status) ->
+    format(User, Status);
 
 format(#t_user{} = User, Status) ->
     io_lib:format("~s '~s'", [
