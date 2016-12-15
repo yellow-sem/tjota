@@ -24,12 +24,6 @@
 
 start_link() -> gen_server:start_link(?MODULE, default, []).
 
-topic(Path, impl_incoming) -> topic(string:concat(Path, ?TOPIC_IMPL_INCOMING));
-topic(Path, impl_outgoing) -> topic(string:concat(Path, ?TOPIC_IMPL_OUTGOING));
-topic(_, _) -> undefined.
-
-topic(Path) -> list_to_binary(string:strip(Path, both, $/)).
-
 init(default) -> {ok, new}.
 
 handle_call({start, #t_resource{address = Address} = Resource}, _From, new) ->
@@ -76,3 +70,9 @@ terminate(_Reason, {state, _Resource, MQTT, _Path}) ->
 code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
 send(To, Command, Data) -> command_event:send(To, Command, Data).
+
+topic(Path, impl_incoming) -> topic(string:concat(Path, ?TOPIC_IMPL_INCOMING));
+topic(Path, impl_outgoing) -> topic(string:concat(Path, ?TOPIC_IMPL_OUTGOING));
+topic(_, _) -> undefined.
+
+topic(Path) -> list_to_binary(string:strip(Path, both, $/)).
