@@ -33,20 +33,24 @@ code_change(_OldVsn, State, _Extra) -> {ok, State}.
 
 dispatch(#t_user{} = User, #t_room{} = Room,
          #t_message{data = DataIn} = _MessageIn) ->
-    [Protocol, Address] = string:tokens(Room#t_room.data, "://"),
+    {Protocol, Address} = data:location(Room#t_room.data),
     {ok, DataOut} = request(User, Room, Protocol, Address, DataIn),
-    MessageOut = #t_message{
-        room_id = Room#t_room.id,
-        timestamp = now,
-        id = uuid:get_v4(),
-        data = DataOut
-    },
-    {ok, _} = db:insert_message(MessageOut),
-    [
-        send({identity, I}, ?C_MSG_RECV, data:format(MessageOut))
-        || #t_user{id = I} <- db:select_room_user(Room)
-    ],
-    ok.
+    case DataOut of
+        none -> ok;
+        _ ->
+            MessageOut = #t_message{
+                room_id = Room#t_room.id,
+                timestamp = now,
+                id = uuid:get_v4(),
+                data = DataOut
+            },
+            {ok, _} = db:insert_message(MessageOut),
+            [
+                send({identity, I}, ?C_MSG_RECV, data:format(MessageOut))
+                || #t_user{id = I} <- db:select_room_user(Room)
+            ],
+            ok
+    end.
 
 request(#t_user{id = Identity} = _User, #t_room{id = RoomId} = _Room,
         ?T_RESOURCE_PROVIDER, Provider, DataIn) ->
@@ -55,6 +59,17 @@ request(#t_user{id = Identity} = _User, #t_room{id = RoomId} = _Room,
     {true, DataOut} = provider:chat_handle(Provider, Token, DataIn,
                                            uuid:uuid_to_string(RoomId)),
     {ok, DataOut};
+
+request(#t_user{} = _User, #t_room{} = _Room,
+        ?T_RESOURCE_HTTP, _Address, _DataIn) ->
+    {ok, none};
+
+request(#t_user{} = _User, #t_room{id = RoomId} = _Room,
+        Protocol, Address, DataIn) ->
+    resource_sup:publish(#t_resource{protocol = Protocol,
+                                     address = Address,
+                                     room_id = RoomId}, DataIn),
+    {ok, none};
 
 request(_User, _Room, _Protocol, _Address, _DataIn) -> not_implemented.
 

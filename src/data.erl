@@ -13,6 +13,10 @@
     replace/3,
     tokens/1
 ]).
+-export([
+    location/1,
+    address/1
+]).
 
 -include("db.hrl").
 
@@ -105,3 +109,14 @@ tokens(Payload) ->
     Tokens = [case Group of [_, _, Token] -> Token; [_, Token] -> Token end
               || Group <- Groups],
     [Unescape(Token) || Token <- Tokens].
+
+location(Location) ->
+    Index = string:str(Location, "://"),
+    Protocol = string:substr(Location, 1, Index - 1),
+    Address = string:substr(Location, Index + 3),
+    {Protocol, Address}.
+
+address(Address) ->
+    {ok, Result} = http_uri:parse(string:concat("scheme://", Address)),
+    {scheme, [], Host, Port, Path, []} = Result,
+    {Host, Port, Path}.

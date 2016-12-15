@@ -13,10 +13,10 @@ init([]) ->
     Flags = {one_for_one, 0, 1},
     Children = [
         util:child(http, worker),
+        util:child(resource_sup, supervisor),
         util:child(bot_handler_sup, supervisor),
         util:child(command_handler_sup, supervisor),
         util:child(command_event, [], worker, permanent),
-        util:child(socket_tcp_acceptor_sup, supervisor),
-        util:child(resource_mqtt_sup, supervisor)
+        util:child(socket_tcp_acceptor_sup, supervisor)
     ],
     {ok, {Flags, Children}}.

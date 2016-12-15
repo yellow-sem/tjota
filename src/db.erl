@@ -28,7 +28,8 @@
 -export([
     insert_resource/1,
     delete_resource/1,
-    select_resource/1
+    select_resource/1,
+    select_resource/0
 ]).
 -export([
     insert_message/1,
@@ -626,6 +627,16 @@ select_resource(#t_resource{} = Resource) ->
         values = [
             {protocol, Resource#t_resource.protocol}
         ]
+    }),
+    lists:map(fun map_resource/1, cqerl:all_rows(Result)).
+
+select_resource() ->
+    {ok, Client} = get_cqerl_client(),
+    {ok, Result} = cqerl:run_query(Client, #cql_query{
+        statement = io_lib:format("
+            SELECT * FROM ~s.~s
+        ", [?KEYSPACE, ?TABLE_RESOURCE]),
+        values = []
     }),
     lists:map(fun map_resource/1, cqerl:all_rows(Result)).
 
