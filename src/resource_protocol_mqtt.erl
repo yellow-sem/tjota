@@ -44,11 +44,16 @@ handle_cast(_Request, State) -> {noreply, State}.
 handle_info({publish, _Topic, Payload},
             {state, #t_resource{room_id = RoomId} = Resource, MQTT, Path}) ->
 
+    case (catch jiffy:decode(Payload)) of
+        {Data} -> Message = decode(lookup(Data, <<"message">>));
+        _ -> Message = Payload
+    end,
+
     MessageOut = #t_message{
         room_id = RoomId,
         timestamp = now,
         id = uuid:get_v4(),
-        data = Payload
+        data = Message
     },
     {ok, _} = db:insert_message(MessageOut),
     [
@@ -60,7 +65,8 @@ handle_info({publish, _Topic, Payload},
 handle_info({publish, Data},
             {state, Resource, MQTT, Path}) ->
     Topic = topic(Path, impl_incoming),
-    emqttc:publish(MQTT, Topic, unicode:characters_to_binary(Data)),
+    Payload = jiffy:encode({[{message, encode(Data)}]}),
+    emqttc:publish(MQTT, Topic, unicode:characters_to_binary(Payload)),
     {noreply, {state, Resource, MQTT, Path}}.
 
 terminate(_Reason, {state, _Resource, MQTT, _Path}) ->
@@ -76,3 +82,14 @@ topic(Path, impl_outgoing) -> topic(string:concat(Path, ?TOPIC_IMPL_OUTGOING));
 topic(_, _) -> undefined.
 
 topic(Path) -> list_to_binary(string:strip(Path, both, $/)).
+
+decode(Value) when is_binary(Value) -> unicode:characters_to_list(Value);
+decode(Value) -> Value.
+
+encode(List) -> unicode:characters_to_binary(List).
+
+lookup(Data, Key) ->
+    case proplists:lookup(Key, Data) of
+        {_, Value} -> Value;
+        none -> undefined
+    end.
