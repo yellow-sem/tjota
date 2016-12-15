@@ -27,7 +27,7 @@ start_link() -> gen_server:start_link(?MODULE, default, []).
 init(default) -> {ok, new}.
 
 handle_call({start, #t_resource{address = Address} = Resource}, _From, new) ->
-    {Host, Port, Path} = data:address(Address),
+    {Host, Port, Path} = data:address(Address, mqtt),
     {ok, MQTT} = emqttc:start_link([{host, Host},
                                     {port, Port},
                                     {logger, info}]),

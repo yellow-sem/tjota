@@ -15,7 +15,7 @@
 ]).
 -export([
     location/1,
-    address/1
+    address/2
 ]).
 
 -include("db.hrl").
@@ -116,7 +116,8 @@ location(Location) ->
     Address = string:substr(Location, Index + 3),
     {Protocol, Address}.
 
-address(Address) ->
-    {ok, Result} = http_uri:parse(string:concat("scheme://", Address)),
-    {scheme, [], Host, Port, Path, []} = Result,
+address(Address, Scheme) ->
+    Uri = string:concat(string:concat(atom_to_list(Scheme), "://"), Address),
+    {ok, Result} = http_uri:parse(Uri, [{scheme_defaults, [{mqtt, 1883}]}]),
+    {_, [], Host, Port, Path, []} = Result,
     {Host, Port, Path}.
