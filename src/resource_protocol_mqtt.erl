@@ -35,7 +35,7 @@ handle_call({start, #t_resource{address = Address} = Resource}, _From, new) ->
     emqttc:subscribe(MQTT, Topic),
     {reply, ok, {state, Resource, MQTT, Path}};
 
-handle_call(stop, _From, State) -> {stop, normal, State};
+handle_call(stop, _From, State) -> {stop, normal, ok, State};
 
 handle_call(_Request, _From, State) -> {noreply, State}.
 
