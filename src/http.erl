@@ -45,7 +45,8 @@ handle(List, State, _) ->
     lists:last([handle(Payload, State) || Payload <- List]).
 
 handle(Payload, {state, Client, Manager}) ->
-    {request, Command, Id, Args} = data:request_parse(Payload),
+    Request = data:request_parse(unicode:characters_to_list(Payload)),
+    {request, Command, Id, Args} = Request,
 
     {ok, Process} = supervisor:start_child(command_handler_sup, []),
     ok = gen_server:call(Process, {identity, Client#s_client.identity}),
@@ -102,4 +103,5 @@ manager_loop(Client) ->
 
 send(Client, Command, Id, Data) ->
     Reply = Client#s_client.socket,
-    Reply(data:response_format({response, Command, Id, Data})).
+    Response = {response, Command, Id, Data},
+    Reply(unicode:characters_to_binary(data:response_format(Response))).
