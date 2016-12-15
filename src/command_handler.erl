@@ -129,8 +129,8 @@ handle(Identity, ?C_ROOM_CREATE, [Name, Type, Data]) ->
             Resource = #t_resource{protocol = Protocol,
                                    address = Address,
                                    room_id = Room#t_room.id},
-            db:insert_resource(Resource),
-            resource_sup:start(Resource);
+            resource_sup:start(Resource),
+            db:insert_resource(Resource);
 
         {?T_ROOM_DIRECT, none} -> ok;
         {?T_ROOM_DIRECT, Credential} ->
