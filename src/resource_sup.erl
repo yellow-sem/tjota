@@ -32,19 +32,29 @@ init([]) ->
     {ok, {Flags, Children}}.
 
 get_protocol_sup(?T_RESOURCE_MQTT) -> resource_protocol_mqtt_sup;
-get_protocol_sup(_Protocol) -> not_implemented.
+get_protocol_sup(_Protocol) -> none.
 
 start(#t_resource{protocol = Protocol} = Resource) ->
-    {ok, Process} = supervisor:start_child(get_protocol_sup(Protocol), []),
-    ets:insert(?REGISTRY, {Resource, Process}),
-    ok = gen_server:call(Process, {start, Resource}),
-    resource_event:subscribe(Process, Resource).
+    ProtocolSup = get_protocol_sup(Protocol),
+    case ProtocolSup of
+        none -> ok;
+        _ ->
+            {ok, Process} = supervisor:start_child(ProtocolSup, []),
+            ets:insert(?REGISTRY, {Resource, Process}),
+            ok = gen_server:call(Process, {start, Resource}),
+            resource_event:subscribe(Process, Resource)
+    end.
 
-stop(#t_resource{protocol = _Protocol} = Resource) ->
-    [{Resource, Process}] = ets:lookup(?REGISTRY, Resource),
-    resource_event:unsubscribe(Process),
-    ok = gen_server:call(Process, stop),
-    ets:delete(?REGISTRY, Resource).
+stop(#t_resource{protocol = Protocol} = Resource) ->
+    ProtocolSup = get_protocol_sup(Protocol),
+    case ProtocolSup of
+        none -> ok;
+        _ ->
+            [{Resource, Process}] = ets:lookup(?REGISTRY, Resource),
+            resource_event:unsubscribe(Process),
+            ok = gen_server:call(Process, stop),
+            ets:delete(?REGISTRY, Resource)
+    end.
 
 publish(#t_resource{} = Resource, Data) ->
     resource_event:publish(Resource, Data).
