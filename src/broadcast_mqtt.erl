@@ -30,11 +30,11 @@ init(default) ->
 
 handle_call(_Request, _From, State) -> {noreply, State}.
 
-handle_cast({status, #t_user{} = User}, {state, MQTT}) ->
+handle_cast({status, #t_user{} = User, Connected}, {state, MQTT}) ->
     Topic = topic(User),
     Data = jiffy:encode({[
         {status, encode(User#t_user.status)},
-        {connected, true},
+        {connected, Connected},
         {user, {[
             {id, encode(uuid:uuid_to_string(User#t_user.id))},
             {provider, encode(User#t_user.provider)},

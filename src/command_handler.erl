@@ -241,7 +241,8 @@ handle(Identity, ?C_STATUS_SET, [Status]) ->
                R#t_room.type == ?T_ROOM_DIRECT
         ])))
     ],
-    gen_server:cast(broadcast_mqtt, {status, User#t_user{status = Status}}),
+    gen_server:cast(broadcast_mqtt,
+                    {status, User#t_user{status = Status}, true}),
     {ok, Identity};
 
 handle(Identity, ?C_STATUS_REQ, []) ->
